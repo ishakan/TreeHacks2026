@@ -1,0 +1,59 @@
+Input: write me code to put in OpenSCAD to make this object
+
+Output:
+// Parameters
+$fn = 64; // Smoothness of curves
+
+// Main Assembly
+union() {
+    base_flange();
+    translate([0, 0, 5]) main_barrel();
+    translate([0, 0, 45]) top_flange();
+    translate([0, 0, 50]) bonnet();
+    
+    // Side Nozzles
+    translate([0, 0, 35]) side_nozzles();
+    
+    // Front Pumper Nozzle
+    translate([0, 0, 35]) rotate([0, 90, 0]) pumper_nozzle();
+}
+
+// --- Modules ---
+
+module base_flange() {
+    cylinder(h = 5, d = 25); // Lower rim
+}
+
+module main_barrel() {
+    cylinder(h = 40, d = 16); // The main vertical pipe
+}
+
+module top_flange() {
+    cylinder(h = 3, d = 22); // Rim below the cap
+}
+
+module bonnet() {
+    // Dome top
+    sphere(d = 18);
+    // Square operating nut on very top
+    translate([0, 0, 8])
+        cube([4, 4, 4], center = true);
+}
+
+module side_nozzles() {
+    // Smaller side outlets
+    for(a = [90, 270]) {
+        rotate([0, 90, a]) {
+            cylinder(h = 12, d1 = 8, d2 = 6);
+            // Small nuts on ends
+            translate([0, 0, 12]) cylinder(h = 2, d = 4, $fn = 6);
+        }
+    }
+}
+
+module pumper_nozzle() {
+    // Large front outlet
+    cylinder(h = 12, d = 12);
+    // Large nut on front
+    translate([0, 0, 12]) cylinder(h = 3, d = 6, $fn = 6);
+}

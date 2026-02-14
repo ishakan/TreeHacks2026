@@ -1,0 +1,65 @@
+Input:
+write me code to put into OpenSCAD to make this fire hydrant
+
+Output:
+
+// --- Parameters ---
+$fn = 64; // Smoothness of curves
+
+// Dimensions
+main_body_radius = 20;
+base_height = 8;
+main_body_height = 70;
+nozzle_radius = 8;
+nozzle_length = 12;
+
+// --- Assembly ---
+
+// 1. The Base Flange
+cylinder(h = base_height, r = main_body_radius + 5);
+
+// 2. Main Pillar
+translate([0, 0, base_height])
+    cylinder(h = main_body_height, r = main_body_radius);
+
+// 3. Top Cap (The Dome)
+translate([0, 0, base_height + main_body_height]) {
+    sphere(r = main_body_radius);
+    // The Nut on top
+    translate([0, 0, main_body_radius - 2])
+        cylinder(h = 6, r = 5, $fn = 6); // Hexagonal nut
+}
+
+// 4. Side Nozzles (Left and Right)
+side_nozzle();
+rotate([0, 0, 180]) side_nozzle();
+
+// 5. Front Main Nozzle (Large)
+rotate([0, 0, 90]) 
+    translate([0, main_body_radius - 2, base_height + 40])
+        large_nozzle();
+
+// --- Modules ---
+
+module side_nozzle() {
+    translate([main_body_radius - 2, 0, base_height + 45])
+    rotate([0, 90, 0]) {
+        // Nozzle body
+        cylinder(h = nozzle_length, r = nozzle_radius);
+        // Nozzle tip (the cap)
+        translate([0, 0, nozzle_length])
+            cylinder(h = 4, r = nozzle_radius + 2);
+        // Small nut on cap
+        translate([0, 0, nozzle_length + 4])
+            cylinder(h = 3, r = 3);
+    }
+}
+
+module large_nozzle() {
+    // Slightly larger front port
+    cylinder(h = nozzle_length + 2, r = nozzle_radius + 2);
+    translate([0, 0, nozzle_length + 2])
+        cylinder(h = 5, r = nozzle_radius + 4);
+     translate([0, 0, nozzle_length + 7])
+        cylinder(h = 4, r = 4);
+}
