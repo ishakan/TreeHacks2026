@@ -35,6 +35,42 @@ BACKEND_DIR = Path(__file__).resolve().parent
 
 
 # ---------------------------------------------------------------------------
+# Write-tool interception
+# ---------------------------------------------------------------------------
+
+def _intercept_write(block: ToolUseBlock, target_map: dict[str, Path]) -> None:
+    """Capture content from a Write tool call and save it to the correct path.
+
+    Claude Code's Write tool may resolve paths relative to its detected project
+    root (the git root), which can differ from our intended session directory.
+    By intercepting the ToolUseBlock *before* Claude Code executes it, we grab
+    the content the agent intended and write it ourselves to the right place.
+
+    ``target_map`` maps base filenames (e.g. "blueprint.html") to absolute
+    target Paths.
+    """
+    if block.name != "Write":
+        return
+    try:
+        inp = block.input if isinstance(block.input, dict) else {}
+        content = inp.get("content", "")
+        file_path = inp.get("file_path", "")
+        if not content:
+            return
+
+        fname = Path(file_path).name if file_path else ""
+        target = target_map.get(fname)
+        if target:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content)
+            log.info("Intercepted Write → %s (%d chars)", target.name, len(content))
+        else:
+            log.debug("Write tool call for untracked file: %s", file_path)
+    except Exception as exc:
+        log.warning("Failed to intercept Write tool call: %s", exc)
+
+
+# ---------------------------------------------------------------------------
 # SDK wrapper that surfaces tool-result errors
 # ---------------------------------------------------------------------------
 
@@ -203,6 +239,12 @@ async def run_blueprint(
         max_turns=12,
     )
 
+    # Map base filenames → correct target paths for Write interception
+    write_targets = {
+        "blueprint.html": html_path,
+        "blueprint_dimensions.json": dims_path,
+    }
+
     agent_text = ""
     char_count = 0
     tool_use_count = 0
@@ -224,6 +266,7 @@ async def run_blueprint(
                         tool_use_count += 1
                         if block.name == "Write":
                             write_count += 1
+                            _intercept_write(block, write_targets)
                         log.info("Blueprint agent tool call #%d: %s", tool_use_count, block.name)
             elif isinstance(message, ResultMessage):
                 blueprint_session_id = message.session_id
@@ -292,6 +335,11 @@ async def refine_blueprint(
     if blueprint_session_id:
         options.resume = blueprint_session_id
 
+    write_targets = {
+        "blueprint.html": html_path,
+        "blueprint_dimensions.json": dims_path,
+    }
+
     agent_text = ""
     char_count = 0
     tool_use_count = 0
@@ -313,6 +361,7 @@ async def refine_blueprint(
                         tool_use_count += 1
                         if block.name == "Write":
                             write_count += 1
+                            _intercept_write(block, write_targets)
                         log.info("Blueprint refine tool call #%d: %s", tool_use_count, block.name)
             elif isinstance(message, ResultMessage):
                 new_session_id = message.session_id
@@ -379,6 +428,11 @@ async def run_coding(
         max_turns=10,
     )
 
+    write_targets = {
+        "model.scad": scad_path,
+        "parameters.json": params_path,
+    }
+
     char_count = 0
     coding_session_id: str | None = None
 
@@ -392,6 +446,9 @@ async def run_coding(
                             "type": "text_delta",
                             "text": block.text,
                         }
+                    elif isinstance(block, ToolUseBlock):
+                        if block.name == "Write":
+                            _intercept_write(block, write_targets)
             elif isinstance(message, ResultMessage):
                 coding_session_id = message.session_id
     except AgentError as exc:
@@ -445,6 +502,11 @@ async def refine_coding(
     if coding_session_id:
         options.resume = coding_session_id
 
+    write_targets = {
+        "model.scad": scad_path,
+        "parameters.json": params_path,
+    }
+
     char_count = 0
     new_session_id: str | None = None
 
@@ -458,6 +520,9 @@ async def refine_coding(
                             "type": "text_delta",
                             "text": block.text,
                         }
+                    elif isinstance(block, ToolUseBlock):
+                        if block.name == "Write":
+                            _intercept_write(block, write_targets)
             elif isinstance(message, ResultMessage):
                 new_session_id = message.session_id
     except AgentError as exc:

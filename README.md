@@ -24,14 +24,14 @@ REPLICATE_API_TOKEN=your_key_here
 ## Running
 
 ```bash
-# Terminal 1 — Backend (port 8000)
+# Terminal 1 — Backend (port 8001)
 source .venv/bin/activate && python server.py
 
-# Terminal 2 — Frontend (port 3000)
+# Terminal 2 — Frontend (port 3001)
 cd frontend && npm run dev
 ```
 
-Open **http://localhost:3000**
+Open **http://localhost:3001**
 
 ## API Endpoints
 
@@ -61,7 +61,7 @@ Open **http://localhost:3000**
 ├── uploads/                # Saved upload images
 ├── outputs/                # Generated GLB files
 └── frontend/
-    ├── vite.config.js      # Proxy /api → :8000
+    ├── vite.config.js      # Proxy /api → :8001
     └── src/
         ├── App.jsx         # Main orchestrator + SSE
         └── components/
