@@ -2,7 +2,7 @@
 """Minimalistic terminal client for the Blueprint-to-OpenSCAD workflow.
 
 Usage:
-    1. Start the server:  python server.py   (from project root, port 8003)
+    1. Start the server:  python server.py   (from project root, port 8001)
 
     Interactive mode:
         python test_blueprint.py
@@ -11,6 +11,7 @@ Usage:
         python test_blueprint.py blueprint "a coffee mug with a handle"
         python test_blueprint.py coding <session_id>
         python test_blueprint.py e2e "a coffee mug with a handle"
+        python test_blueprint.py workflow "a coffee mug with a handle"
 
 Dialogue sessions are saved to  backend/test_sessions/<session_id>/
 """
@@ -25,7 +26,7 @@ from pathlib import Path
 
 import httpx
 
-BASE_URL = os.environ.get("BLUEPRINT_URL", "http://localhost:8003")
+BASE_URL = os.environ.get("BLUEPRINT_URL", "http://localhost:8001")
 SAVE_DIR = Path(__file__).resolve().parent / "test_sessions"
 SAVE_DIR.mkdir(exist_ok=True)
 
@@ -123,22 +124,22 @@ def fetch_and_save(session_id: str) -> tuple[Path, dict]:
 
     saved: list[str] = []
 
-    if "html" in data:
+    if data.get("html"):
         (d / "blueprint.html").write_text(data["html"])
         saved.append("blueprint.html")
-    if "dimensions" in data:
+    if data.get("dimensions"):
         (d / "blueprint_dimensions.json").write_text(
             json.dumps(data["dimensions"], indent=2)
         )
         saved.append("blueprint_dimensions.json")
-    if "scadCode" in data:
+    if data.get("scadCode"):
         (d / "model.scad").write_text(data["scadCode"])
         saved.append("model.scad")
-    if "parameters" in data:
+    if data.get("parameters"):
         (d / "parameters.json").write_text(
             json.dumps(data["parameters"], indent=2)
         )
-        saved.append("paramers.json")
+        saved.append("parameters.json")
 
     if saved:
         print(f"  {DIM}Saved: {', '.join(saved)}{RESET}")
@@ -302,6 +303,124 @@ def run_e2e_test(description: str) -> bool:
 
     print(f"\n{'─' * 60}\n")
     return run_coding_test(session_id)
+
+
+# ---------------------------------------------------------------------------
+# Full workflow test — single consolidated run with validation summary
+# ---------------------------------------------------------------------------
+
+def run_full_workflow(description: str) -> bool:
+    """Run the complete blueprint-to-OpenSCAD pipeline and validate every artefact.
+
+    Phases:
+      1. Generate blueprint  (POST /api/blueprint/generate)
+      2. Fetch & validate blueprint artefacts
+      3. Confirm → coding    (POST /api/blueprint/confirm)
+      4. Fetch & validate all artefacts (html, dimensions, scad, parameters)
+      5. Print a pass / fail summary
+    """
+    import time as _time
+
+    checks: list[tuple[str, bool, str]] = []  # (name, passed, detail)
+    t0 = _time.monotonic()
+
+    cols = shutil.get_terminal_size().columns
+    print(f"\n{'=' * cols}")
+    print(f"{BOLD}  Full Workflow Test{RESET}")
+    print(f"  {DIM}\"{description}\"{RESET}")
+    print(f"{'=' * cols}")
+
+    # ── Phase 1: Blueprint ────────────────────────────────────────────
+    print(f"\n{CYAN}[1/4] Generating blueprint ...{RESET}")
+    bp_result = stream_sse("POST", "/api/blueprint/generate", {"description": description})
+
+    if not bp_result or not bp_result.get("sessionId"):
+        checks.append(("Blueprint SSE stream", False, "no session ID returned"))
+        _print_summary(checks, _time.monotonic() - t0)
+        return False
+
+    session_id = bp_result["sessionId"]
+    checks.append(("Blueprint SSE stream", True, f"session {session_id[:8]}..."))
+
+    # ── Phase 2: Validate blueprint artefacts ─────────────────────────
+    print(f"\n{CYAN}[2/4] Fetching blueprint artefacts ...{RESET}")
+    try:
+        d, bp_data = fetch_and_save(session_id)
+    except Exception as exc:
+        checks.append(("Fetch blueprint artefacts", False, str(exc)))
+        _print_summary(checks, _time.monotonic() - t0)
+        return False
+
+    html = bp_data.get("html", "")
+    dims = bp_data.get("dimensions", {})
+
+    checks.append(("blueprint.html", bool(html), f"{len(html)} chars" if html else "empty"))
+    checks.append(("blueprint_dimensions.json", bool(dims), f"{len(dims)} params" if dims else "empty"))
+
+    if not html:
+        print(f"{RED}Blueprint HTML missing — cannot proceed to coding.{RESET}")
+        _print_summary(checks, _time.monotonic() - t0)
+        return False
+
+    # ── Phase 3: Coding ───────────────────────────────────────────────
+    print(f"\n{CYAN}[3/4] Confirming blueprint & generating OpenSCAD code ...{RESET}")
+    code_result = stream_sse("POST", "/api/blueprint/confirm", {"sessionId": session_id})
+
+    if not code_result:
+        checks.append(("Coding SSE stream", False, "no result"))
+        _print_summary(checks, _time.monotonic() - t0)
+        return False
+
+    checks.append(("Coding SSE stream", True, code_result.get("completedType", "?")))
+
+    # ── Phase 4: Validate all artefacts ───────────────────────────────
+    print(f"\n{CYAN}[4/4] Fetching final session state ...{RESET}")
+    try:
+        d, final = fetch_and_save(session_id)
+    except Exception as exc:
+        checks.append(("Fetch final artefacts", False, str(exc)))
+        _print_summary(checks, _time.monotonic() - t0)
+        return False
+
+    scad = final.get("scadCode", "")
+    params = final.get("parameters", {})
+
+    checks.append(("model.scad", bool(scad), f"{len(scad)} chars" if scad else "empty"))
+    checks.append(("parameters.json", bool(params), f"{len(params)} params" if params else "empty"))
+
+    # Print artefact details
+    if dims:
+        print_dims(dims)
+    if params:
+        print_params(params)
+    if scad:
+        preview = scad[:300]
+        print(f"\n{DIM}--- model.scad preview ---{RESET}")
+        print(f"{DIM}{preview}{'...' if len(scad) > 300 else ''}{RESET}")
+
+    print(f"\n{BOLD}Session:{RESET}  {session_id}")
+    print(f"{BOLD}Saved to:{RESET} {d}")
+
+    elapsed = _time.monotonic() - t0
+    _print_summary(checks, elapsed)
+
+    return all(ok for _, ok, _ in checks)
+
+
+def _print_summary(checks: list[tuple[str, bool, str]], elapsed: float) -> None:
+    """Print a coloured pass/fail table."""
+    cols = shutil.get_terminal_size().columns
+    passed = sum(1 for _, ok, _ in checks if ok)
+    total = len(checks)
+    colour = GREEN if passed == total else RED
+
+    print(f"\n{'─' * cols}")
+    print(f"{BOLD}  Results: {colour}{passed}/{total} passed{RESET}  ({elapsed:.1f}s)")
+    print(f"{'─' * cols}")
+
+    for name, ok, detail in checks:
+        mark = f"{GREEN}PASS{RESET}" if ok else f"{RED}FAIL{RESET}"
+        print(f"  [{mark}] {name}  {DIM}{detail}{RESET}")
 
 
 # ---------------------------------------------------------------------------
@@ -490,6 +609,9 @@ if __name__ == "__main__":
         sys.exit(0 if ok else 1)
     elif len(sys.argv) >= 3 and sys.argv[1] == "e2e":
         ok = run_e2e_test(" ".join(sys.argv[2:]))
+        sys.exit(0 if ok else 1)
+    elif len(sys.argv) >= 3 and sys.argv[1] == "workflow":
+        ok = run_full_workflow(" ".join(sys.argv[2:]))
         sys.exit(0 if ok else 1)
     else:
         main()
