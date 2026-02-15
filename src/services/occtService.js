@@ -34,26 +34,38 @@ export async function initOCCT() {
       try {
         console.log(`${LOG_PREFIX} ========== STARTING WASM INITIALIZATION ==========`)
         console.log(`${LOG_PREFIX} Calling initOpenCascade()...`)
-        
+
         const startTime = performance.now()
-        
-        // The package handles locateFile internally - just call the factory
-        const instance = await initOpenCascade()
-        
+
+        // Configure WASM loading from public folder
+        const instance = await initOpenCascade({
+          locateFile: (path) => {
+            // Load WASM files from public folder
+            if (path.endsWith('.wasm') || path.endsWith('.wasm.wasm')) {
+              console.log(`${LOG_PREFIX} Loading WASM from public folder: ${path}`)
+              return `/opencascade.wasm`
+            }
+            if (path.endsWith('.js')) {
+              return `/opencascade.wasm.js`
+            }
+            return path
+          }
+        })
+
         const endTime = performance.now()
-        
+
         oc = instance
         console.log(`${LOG_PREFIX} ========== WASM INITIALIZATION COMPLETE ==========`)
         console.log(`${LOG_PREFIX} ✓ OpenCascade.js initialized in ${(endTime - startTime).toFixed(2)}ms`)
         console.log(`${LOG_PREFIX} Instance type:`, typeof oc)
         console.log(`${LOG_PREFIX} Sample APIs:`, Object.keys(oc).slice(0, 5))
-        
+
         return oc
       } catch (err) {
         console.error(`${LOG_PREFIX} ========== CAD KERNEL CRASH ==========`)
         console.error(`${LOG_PREFIX} Error:`, err.name, '-', err.message)
         console.error(err.stack)
-        
+
         initError = new Error(
           `Failed to load CAD kernel: ${err.message}. Your browser may not support WebAssembly.`
         )
