@@ -43,6 +43,11 @@ export type Verification = Prisma.VerificationModel
  */
 export type Project = Prisma.ProjectModel
 /**
+ * Model ProjectScene
+ * 
+ */
+export type ProjectScene = Prisma.ProjectSceneModel
+/**
  * Model Asset
  * 
  */

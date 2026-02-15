@@ -145,23 +145,25 @@ export default function NewAssetMenu() {
             </Link>
           </DropdownMenuItem>
 
-          <DropdownMenuItem className="cursor-pointer pr-1 py-0">
-            <div className="flex w-full items-start">
-              <div className="bg-muted/60 text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-lg mt-2">
-                <WandSparkles className="size-5" />
-              </div>
-              <div className="flex flex-col items-start gap-0.5 px-3 py-2">
-                <span className="text-sm font-medium">
-                  Text to 3D
-                  <span className="bg-cyan-300 text-slate-950 px-1.5 py-0.5 ml-2 rounded text-xs">
-                    AI
+          <DropdownMenuItem asChild className="cursor-pointer pr-1 py-0">
+            <Link href="/generate/text-to-3d" className="w-full">
+              <div className="flex w-full items-start">
+                <div className="bg-muted/60 text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-lg mt-2">
+                  <WandSparkles className="size-5" />
+                </div>
+                <div className="flex flex-col items-start gap-0.5 px-3 py-2">
+                  <span className="text-sm font-medium">
+                    Text to 3D
+                    <span className="bg-cyan-300 text-slate-950 px-1.5 py-0.5 ml-2 rounded text-xs">
+                      AI
+                    </span>
                   </span>
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  Create 3D models using natural language.
-                </span>
+                  <span className="text-muted-foreground text-xs">
+                    Create 3D models using natural language.
+                  </span>
+                </div>
               </div>
-            </div>
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

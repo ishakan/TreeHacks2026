@@ -3,6 +3,7 @@
 /.uploads
 /prisma/generated
 /TRELLIS_UPDATED
+/OPENSCAD
 
 # dependencies
 /node_modules

@@ -7,11 +7,9 @@ import {
   Box,
   Boxes,
   FolderOpen,
-  HelpCircle,
   ImageUp,
   LayoutDashboard,
-  Settings,
-  Sparkles,
+  Pencil,
   WandSparkles,
 } from "lucide-react";
 
@@ -32,7 +30,6 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { AiOutlineAntDesign } from "react-icons/ai";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 
@@ -96,6 +93,13 @@ const navMain: NavItem[] = [
         icon: WandSparkles,
         active: (pathname: string) =>
           pathname.startsWith("/generate/text-to-3d"),
+      },
+      {
+        title: "Asset editor",
+        url: "/generate/asset-editor",
+        icon: Pencil,
+        active: (pathname: string) =>
+          pathname.startsWith("/generate/asset-editor"),
       },
     ],
   },

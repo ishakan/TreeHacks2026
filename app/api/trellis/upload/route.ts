@@ -25,7 +25,13 @@ export async function POST(request: Request) {
   }
 
   const incoming = await request.formData();
-  const file = incoming.get("file");
+  const files = incoming
+    .getAll("files")
+    .filter((value): value is File => value instanceof File);
+  const singleFile = incoming.get("file");
+  if (files.length === 0 && singleFile instanceof File) {
+    files.push(singleFile);
+  }
   const projectIdRaw = incoming.get("projectId");
   const titleRaw = incoming.get("title");
   const descriptionRaw = incoming.get("description");
@@ -36,14 +42,14 @@ export async function POST(request: Request) {
       ? projectIdRaw.trim()
       : null;
 
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: "Missing file field: file" }, { status: 400 });
+  if (files.length === 0) {
+    return NextResponse.json({ error: "Missing file field: files" }, { status: 400 });
   }
 
   const title =
     typeof titleRaw === "string" && titleRaw.trim().length > 0
       ? titleRaw.trim()
-      : getDefaultAssetTitle(file.name);
+      : getDefaultAssetTitle(files[0].name);
   const description =
     typeof descriptionRaw === "string" && descriptionRaw.trim().length > 0
       ? descriptionRaw.trim()
@@ -64,7 +70,9 @@ export async function POST(request: Request) {
   }
 
   const upstreamForm = new FormData();
-  upstreamForm.append("file", file, file.name);
+  for (const file of files) {
+    upstreamForm.append("files", file, file.name);
+  }
 
   const upstreamResponse = await fetch(
     `${baseUrl}/api/upload?resolution=${encodeURIComponent(String(resolution))}`,

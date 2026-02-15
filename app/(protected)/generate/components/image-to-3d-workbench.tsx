@@ -21,6 +21,13 @@ import { getDefaultAssetTitle } from "@/lib/asset-title";
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE_BYTES = 10 * 1024 * 1024;
+const MAX_IMAGES = 10;
+
+type SelectedImage = {
+  id: string;
+  file: File;
+  previewUrl: string;
+};
 
 type SegmentedCandidate = {
   id: string;
@@ -41,9 +48,16 @@ function decodeBase64ToPngBlob(value: string) {
   return new Blob([bytes], { type: "image/png" });
 }
 
-export default function ImageTo3DWorkbench() {
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+export default function ImageTo3DWorkbench({
+  embedded = false,
+  onAssetCreated,
+  projectId,
+}: {
+  embedded?: boolean;
+  onAssetCreated?: (assetId: string) => void;
+  projectId?: string;
+}) {
+  const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [resolution, setResolution] = useState(512);
@@ -80,9 +94,19 @@ export default function ImageTo3DWorkbench() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const captureRef = useRef<(() => string | null) | null>(null);
   const uploadThumbnailRef = useRef(false);
+  const downloadUrlRef = useRef<string | null>(null);
 
   const isProcessing = status === "uploading" || status === "processing";
   const hasGenerationStarted = status !== "idle";
+
+  const clearSelectedImages = useCallback(() => {
+    setSelectedImages((current) => {
+      for (const image of current) {
+        URL.revokeObjectURL(image.previewUrl);
+      }
+      return [];
+    });
+  }, []);
 
   const clearSegmentCandidates = useCallback(() => {
     setSegmentCandidates((current) => {
@@ -118,18 +142,38 @@ export default function ImageTo3DWorkbench() {
     });
   }, []);
 
-  const applySelectedImage = useCallback(
+  const addSelectedImage = useCallback(
     (picked: File) => {
-      const objectUrl = URL.createObjectURL(picked);
+      if (selectedImages.length >= MAX_IMAGES) {
+        setError(`You can upload up to ${MAX_IMAGES} images.`);
+        return;
+      }
+
       resetGenerationState();
-      setPreview((previous) => {
-        if (previous) {
-          URL.revokeObjectURL(previous);
+      setSelectedImages((current) => [
+        ...current,
+        {
+          id: `${Date.now()}-${Math.random()}`,
+          file: picked,
+          previewUrl: URL.createObjectURL(picked),
+        },
+      ]);
+      setTitle((current) => current.trim() || getDefaultAssetTitle(picked.name));
+      setError(null);
+    },
+    [resetGenerationState, selectedImages.length],
+  );
+
+  const removeSelectedImage = useCallback(
+    (id: string) => {
+      resetGenerationState();
+      setSelectedImages((current) => {
+        const target = current.find((image) => image.id === id);
+        if (target) {
+          URL.revokeObjectURL(target.previewUrl);
         }
-        return objectUrl;
+        return current.filter((image) => image.id !== id);
       });
-      setFile(picked);
-      setTitle(getDefaultAssetTitle(picked.name));
       setError(null);
     },
     [resetGenerationState],
@@ -187,22 +231,23 @@ export default function ImageTo3DWorkbench() {
   }, [pendingFile]);
 
   useEffect(() => {
+    downloadUrlRef.current = downloadUrl;
+  }, [downloadUrl]);
+
+  useEffect(() => {
     return () => {
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
       }
 
-      if (preview) {
-        URL.revokeObjectURL(preview);
+      if (downloadUrlRef.current) {
+        URL.revokeObjectURL(downloadUrlRef.current);
       }
 
-      if (downloadUrl) {
-        URL.revokeObjectURL(downloadUrl);
-      }
-
+      clearSelectedImages();
       clearSegmentCandidates();
     };
-  }, [clearSegmentCandidates, downloadUrl, preview]);
+  }, [clearSegmentCandidates, clearSelectedImages]);
 
   useEffect(() => {
     return () => {
@@ -258,6 +303,11 @@ export default function ImageTo3DWorkbench() {
 
   const onFilePicked = useCallback(
     (picked: File) => {
+      if (selectedImages.length >= MAX_IMAGES) {
+        setError(`You can upload up to ${MAX_IMAGES} images.`);
+        return;
+      }
+
       if (!ACCEPTED_TYPES.includes(picked.type)) {
         setError("Please upload a JPEG, PNG, or WebP image.");
         return;
@@ -276,18 +326,18 @@ export default function ImageTo3DWorkbench() {
       setSegmentDialogOpen(true);
       setError(null);
     },
-    [clearSegmentCandidates],
+    [clearSegmentCandidates, selectedImages.length],
   );
 
   const onSkipSegmentation = useCallback(() => {
     if (!pendingFile) {
       return;
     }
-    applySelectedImage(pendingFile);
+    addSelectedImage(pendingFile);
     setSegmentDialogOpen(false);
     setPendingFile(null);
     setSegmentStep("ask");
-  }, [applySelectedImage, pendingFile]);
+  }, [addSelectedImage, pendingFile]);
 
   const onRunSegmentation = useCallback(async () => {
     if (!pendingFile) {
@@ -369,18 +419,18 @@ export default function ImageTo3DWorkbench() {
 
   const onPickSegment = useCallback(
     (candidate: SegmentedCandidate) => {
-      applySelectedImage(candidate.imageFile);
+      addSelectedImage(candidate.imageFile);
       setSegmentDialogOpen(false);
       setPendingFile(null);
       setSegmentStep("ask");
       setSegmentError(null);
       clearSegmentCandidates();
     },
-    [applySelectedImage, clearSegmentCandidates],
+    [addSelectedImage, clearSegmentCandidates],
   );
 
   const onGenerate = useCallback(async () => {
-    if (!file) {
+    if (selectedImages.length === 0) {
       return;
     }
 
@@ -397,10 +447,15 @@ export default function ImageTo3DWorkbench() {
     setAssetCreated(false);
 
     const formData = new FormData();
-    formData.append("file", file);
+    for (const image of selectedImages) {
+      formData.append("files", image.file);
+    }
     formData.append("resolution", String(resolution));
     formData.append("title", trimmedTitle);
     formData.append("description", description.trim());
+    if (projectId) {
+      formData.append("projectId", projectId);
+    }
 
     const response = await fetch("/api/trellis/upload", {
       method: "POST",
@@ -420,7 +475,7 @@ export default function ImageTo3DWorkbench() {
     setJobId(payload.job_id);
     setStatus("processing");
     setMessage("Processing...");
-  }, [description, file, resolution, title]);
+  }, [description, projectId, resolution, selectedImages, title]);
 
   useEffect(() => {
     if (
@@ -470,6 +525,14 @@ export default function ImageTo3DWorkbench() {
     uploadThumbnailRef.current = false;
   }, [generatedAssetId]);
 
+  useEffect(() => {
+    if (!generatedAssetId || !thumbnailSaved) {
+      return;
+    }
+
+    onAssetCreated?.(generatedAssetId);
+  }, [generatedAssetId, onAssetCreated, thumbnailSaved]);
+
   const handleCaptureReady = useCallback((capture: () => string | null) => {
     captureRef.current = capture;
   }, []);
@@ -487,15 +550,19 @@ export default function ImageTo3DWorkbench() {
   }, [jobId]);
 
   return (
-    <div className="h-[calc(100vh-7.5rem)] min-h-[400px] w-full overflow-hidden rounded-xl border lg:grid lg:grid-cols-[380px_1fr]">
+    <div
+      className={`${embedded ? "h-full min-h-0" : "h-[calc(100vh-7.5rem)] min-h-[400px]"} w-full overflow-hidden rounded-xl border lg:grid lg:grid-cols-[380px_1fr]`}
+    >
       <aside className="border-b lg:border-r lg:border-b-0 p-5 sm:p-6 overflow-y-auto">
         <div className="mb-5 space-y-6">
-          <Button asChild variant="outline" size="sm">
-            <Link href="/assets">
-              <ArrowLeft className="size-4" />
-              Back to assets
-            </Link>
-          </Button>
+          {!embedded ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href="/assets">
+                <ArrowLeft className="size-4" />
+                Back to assets
+              </Link>
+            </Button>
+          ) : null}
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
               Image to 3D
@@ -543,34 +610,37 @@ export default function ImageTo3DWorkbench() {
               }}
             />
 
-            {preview ? (
+            {selectedImages.length > 0 ? (
               <div className="space-y-2">
-                <img
-                  src={preview}
-                  alt="Selected preview"
-                  className="h-auto w-full rounded-md object-contain"
-                />
-                {!hasGenerationStarted ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      resetGenerationState();
-                      setFile(null);
-                      setTitle("");
-                      setDescription("");
-                      setPreview((previous) => {
-                        if (previous) {
-                          URL.revokeObjectURL(previous);
-                        }
-                        return null;
-                      });
-                    }}
-                  >
-                    Remove image
-                  </Button>
-                ) : null}
+                <p className="text-xs text-muted-foreground">
+                  {selectedImages.length} / {MAX_IMAGES} images selected
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {selectedImages.map((image, index) => (
+                    <div
+                      key={image.id}
+                      className="relative overflow-hidden rounded-md border bg-black/10 p-1"
+                    >
+                      <img
+                        src={image.previewUrl}
+                        alt={`Selected preview ${index + 1}`}
+                        className="h-24 w-full rounded object-contain"
+                      />
+                      {!hasGenerationStarted ? (
+                        <button
+                          type="button"
+                          className="absolute right-2 top-2 rounded border bg-black/60 px-2 text-xs text-white hover:bg-black/75"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            removeSelectedImage(image.id);
+                          }}
+                        >
+                          Remove
+                        </button>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="pb-4 pt-1 text-center">
@@ -579,7 +649,7 @@ export default function ImageTo3DWorkbench() {
                 </div>
                 <p className="mt-3 text-sm">Drag and drop or click to upload</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  JPEG, PNG, or WEBP
+                  JPEG, PNG, or WEBP (up to {MAX_IMAGES} images)
                 </p>
               </div>
             )}
@@ -634,7 +704,7 @@ export default function ImageTo3DWorkbench() {
           {status !== "completed" ? (
             <Button
               onClick={onGenerate}
-              disabled={!file || isProcessing}
+              disabled={selectedImages.length === 0 || isProcessing}
               className="w-full"
               size="lg"
             >
@@ -647,11 +717,13 @@ export default function ImageTo3DWorkbench() {
 
           {downloadUrl ? (
             <div className="space-y-2">
-              <Button className="w-full" asChild>
-                <Link href={`/assets/${generatedAssetId}`}>
-                  View asset page <ArrowRight />
-                </Link>
-              </Button>
+              {!embedded ? (
+                <Button className="w-full" asChild>
+                  <Link href={`/assets/${generatedAssetId}`}>
+                    View asset page <ArrowRight />
+                  </Link>
+                </Button>
+              ) : null}
               <Button
                 variant={"secondary"}
                 className="w-full"
@@ -670,8 +742,9 @@ export default function ImageTo3DWorkbench() {
 
           {assetCreated ? (
             <div className="rounded-md border border-cyan-500/30 bg-cyan-500/10 p-3 text-xs text-cyan-100">
-              Model was saved as an asset. Return to Assets to see it in the
-              list.
+              {embedded
+                ? "Model was saved as an asset. You can now import it from the Assets tab."
+                : "Model was saved as an asset. Return to Assets to see it in the list."}
             </div>
           ) : null}
         </div>
@@ -701,7 +774,7 @@ export default function ImageTo3DWorkbench() {
           </div>
         ) : (
           <div className="absolute inset-0 grid place-items-center text-muted-foreground">
-            Upload an image to get started
+            Upload one or more images to get started
           </div>
         )}
       </section>

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentSession } from "@/lib/session";
 import SiteHeader from "@/components/site-header";
 import { ArrowRight } from "lucide-react";
+import FloatingCard from "@/components/floating-card";
 
 const partners = [
   {
@@ -54,34 +55,6 @@ const features = [
   },
 ];
 
-function FloatingSkeleton({
-  className,
-  delay,
-  label,
-}: {
-  className: string;
-  delay: string;
-  label: string;
-}) {
-  return (
-    <div
-      className={`floating-card group absolute rounded-2xl border border-white/20 bg-white/5 p-4 backdrop-blur-xl transition-transform duration-300 hover:scale-[1.03] hover:border-cyan-300/40 ${className}`}
-      style={{ animationDelay: delay }}
-    >
-      <p className="text-[11px] uppercase tracking-[0.18em] text-slate-300">
-        {label}
-      </p>
-      <div className="mt-3 h-24 rounded-xl border border-white/10 bg-gradient-to-br from-slate-400/20 via-slate-300/5 to-transparent" />
-      <div className="mt-3 h-2 w-3/4 rounded bg-white/20" />
-      <div className="mt-2 h-2 w-1/2 rounded bg-white/10" />
-      <div className="mt-4 flex gap-2">
-        <div className="h-8 flex-1 rounded-lg border border-white/10 bg-white/10" />
-        <div className="h-8 w-10 rounded-lg border border-white/10 bg-white/10" />
-      </div>
-    </div>
-  );
-}
-
 export default async function Home() {
   const session = await getCurrentSession();
 
@@ -89,7 +62,14 @@ export default async function Home() {
     <main className="relative isolate min-h-screen overflow-hidden bg-[#060816] text-white">
       <div className="pointer-events-none absolute inset-0">
         {/* <div className="hero-orb absolute -top-56 -left-56 h-[36rem] w-[36rem] rounded-full bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.45),rgba(79,70,229,0.18)_42%,transparent_75%)] blur-3xl" /> */}
-        <div className="hero-wave absolute -right-32 -top-16 h-[34rem] w-[34rem] rounded-full bg-[conic-gradient(from_220deg_at_50%_50%,rgba(14,255,100,0.7),rgba(255,100,246,0.3),rgba(14,165,233,0.7),rgba(255,0,0,1))] opacity-80 blur-2xl" />
+        {/* <div className="hero-wave absolute -right-32 -top-16 h-[34rem] w-[34rem] rounded-full bg-[conic-gradient(from_220deg_at_50%_50%,rgba(14,255,100,0.7),rgba(255,100,246,0.3),rgba(14,165,233,0.7),rgba(255,0,0,1))] opacity-80 blur-2xl" /> */}
+        <Image
+          src="/voxalLogoTransparent.png"
+          alt="Voxal Logo"
+          width={800}
+          height={800}
+          className="absolute -top-48 -right-24 opacity-20 blur-sm grayscale"
+        />
       </div>
       <div className="pointer-events-none absolute top-18 bottom-0 left-[max(1rem,calc((100vw-80rem)/2))] z-10 w-px bg-white/20" />
       <div className="pointer-events-none absolute top-18 bottom-0 right-[max(1rem,calc((100vw-80rem)/2))] z-10 w-px bg-white/20" />
@@ -143,30 +123,6 @@ export default async function Home() {
                 <p className="mt-1">Generated CAD assets in production</p>
               </div>
             </div>
-          </div>
-
-          <div
-            id="models"
-            className="relative mx-auto h-[28rem] w-full max-w-xl"
-          >
-            {/* <div className="absolute inset-0 rounded-[2rem] border border-white/20 bg-gradient-to-br from-white/20 via-white/5 to-transparent backdrop-blur-xl" />
-            <div className="absolute inset-6 rounded-[1.5rem] border border-white/20 bg-[#060816]/80" /> */}
-
-            <FloatingSkeleton
-              className="left-6 top-7 w-56"
-              delay="0s"
-              label="Model Layer A"
-            />
-            <FloatingSkeleton
-              className="right-6 top-16 w-52"
-              delay="1.3s"
-              label="Material Study"
-            />
-            <FloatingSkeleton
-              className="bottom-8 left-20 w-60"
-              delay="2.1s"
-              label="Assembly Draft"
-            />
           </div>
         </section>
 

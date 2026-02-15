@@ -71,14 +71,14 @@ export default async function AssetsPage() {
                   <div className="flex items-center justify-between gap-3">
                     <p className="line-clamp-1 font-medium">{getAssetDisplayTitle(asset)}</p>
                     <Badge variant="outline">
-                      {asset.projects.length} workspace{asset.projects.length === 1 ? "" : "s"}
+                      {asset.projects.length} project{asset.projects.length === 1 ? "" : "s"}
                     </Badge>
                   </div>
 
                   <div className="text-muted-foreground space-y-1 text-sm">
                     {asset.projects.length > 0 ? (
                       <p className="line-clamp-1">
-                        Workspaces: {asset.projects.map((project) => project.name).join(", ")}
+                        Projects: {asset.projects.map((project) => project.name).join(", ")}
                       </p>
                     ) : null}
                     <p className="line-clamp-1">{asset.mimeType}</p>
@@ -90,7 +90,11 @@ export default async function AssetsPage() {
                   </div>
                 </Link>
                 <div className="absolute right-3 bottom-3 z-10">
-                  <AssetCardMenu assetId={asset.id} fileName={asset.fileName} />
+                  <AssetCardMenu
+                    assetId={asset.id}
+                    fileName={asset.fileName}
+                    mimeType={asset.mimeType}
+                  />
                 </div>
               </CardContent>
             </Card>

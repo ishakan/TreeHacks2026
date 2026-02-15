@@ -34,6 +34,7 @@ type ViewerInternals = {
     key: THREE.DirectionalLight;
     fill: THREE.DirectionalLight;
     rim: THREE.DirectionalLight;
+    back: THREE.DirectionalLight;
     hemi: THREE.HemisphereLight;
   };
   helpers: {
@@ -50,32 +51,36 @@ const PRESET_SETTINGS: Record<
     key: number;
     fill: number;
     rim: number;
+    back: number;
     hemi: number;
   }
 > = {
   bright: {
-    exposure: 1.55,
-    ambient: 1.15,
-    key: 2.1,
-    fill: 1.2,
-    rim: 0.8,
-    hemi: 0.95,
+    exposure: 1.75,
+    ambient: 1.3,
+    key: 2.4,
+    fill: 1.4,
+    rim: 0.95,
+    back: 1.25,
+    hemi: 1.1,
   },
   studio: {
-    exposure: 1.2,
-    ambient: 0.85,
-    key: 1.45,
-    fill: 0.8,
-    rim: 0.5,
-    hemi: 0.7,
+    exposure: 1.4,
+    ambient: 1.0,
+    key: 1.75,
+    fill: 1.0,
+    rim: 0.65,
+    back: 0.95,
+    hemi: 0.85,
   },
   soft: {
-    exposure: 1.0,
-    ambient: 0.62,
-    key: 0.95,
-    fill: 0.55,
-    rim: 0.35,
-    hemi: 0.5,
+    exposure: 1.15,
+    ambient: 0.78,
+    key: 1.2,
+    fill: 0.72,
+    rim: 0.48,
+    back: 0.7,
+    hemi: 0.65,
   },
 };
 
@@ -127,6 +132,7 @@ export default function TrellisModelViewer({
     internals.lights.key.intensity = preset.key;
     internals.lights.fill.intensity = preset.fill;
     internals.lights.rim.intensity = preset.rim;
+    internals.lights.back.intensity = preset.back;
     internals.lights.hemi.intensity = preset.hemi;
 
     internals.scene.background = new THREE.Color(
@@ -184,7 +190,11 @@ export default function TrellisModelViewer({
     rimLight.position.set(0, -4, 6);
     scene.add(rimLight);
 
-    const hemi = new THREE.HemisphereLight(0xffffff, 0x1e2430, 1);
+    const backLight = new THREE.DirectionalLight(0xffffff, 1);
+    backLight.position.set(0, 4, -8);
+    scene.add(backLight);
+
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x3a4355, 1);
     scene.add(hemi);
 
     const gridHelper = new THREE.GridHelper(20, 30, 0x283241, 0x1a2432);
@@ -201,6 +211,7 @@ export default function TrellisModelViewer({
         key: keyLight,
         fill: fillLight,
         rim: rimLight,
+        back: backLight,
         hemi,
       },
       helpers: {
@@ -215,6 +226,7 @@ export default function TrellisModelViewer({
     keyLight.intensity = initialPreset.key;
     fillLight.intensity = initialPreset.fill;
     rimLight.intensity = initialPreset.rim;
+    backLight.intensity = initialPreset.back;
     hemi.intensity = initialPreset.hemi;
     scene.background = new THREE.Color(BACKGROUND_COLORS[backgroundMode]);
     gridHelper.visible = showGuides;

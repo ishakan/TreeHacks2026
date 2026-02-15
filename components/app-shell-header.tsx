@@ -117,7 +117,7 @@ export function AppShellHeader() {
 
   return (
     <header className="bg-sidebar text-sidebar-foreground border-sidebar-border sticky top-0 z-20 flex h-14 shrink-0 items-center border-b">
-      <div className="flex w-full items-center gap-2 px-4 lg:px-8">
+      <div className={`transition-all flex w-full items-center gap-2 px-4 ${pathname.startsWith("/studio/") ? "lg:px-4" : "lg:px-8"}`}>
         <div className="relative w-full max-w-md" ref={rootRef}>
           <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
           <Input
@@ -213,7 +213,7 @@ export function AppShellHeader() {
             Settings
           </Button>
           <Button size="sm" asChild>
-            <Link href="/dashboard">
+            <Link href="/projects">
               <Plus className="size-4" />
               New project
             </Link>

@@ -31,6 +31,17 @@ export async function getProjectForUser(projectId: string, userId: string) {
       visibility: true,
       createdAt: true,
       updatedAt: true,
+      assets: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          title: true,
+          fileName: true,
+          mimeType: true,
+          sizeBytes: true,
+          createdAt: true,
+        },
+      },
     },
   });
 }

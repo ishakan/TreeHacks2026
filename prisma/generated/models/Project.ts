@@ -200,6 +200,7 @@ export type ProjectWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"Project"> | Date | string
   owner?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   assets?: Prisma.AssetListRelationFilter
+  scene?: Prisma.XOR<Prisma.ProjectSceneNullableScalarRelationFilter, Prisma.ProjectSceneWhereInput> | null
 }
 
 export type ProjectOrderByWithRelationInput = {
@@ -212,6 +213,7 @@ export type ProjectOrderByWithRelationInput = {
   updatedAt?: Prisma.SortOrder
   owner?: Prisma.UserOrderByWithRelationInput
   assets?: Prisma.AssetOrderByRelationAggregateInput
+  scene?: Prisma.ProjectSceneOrderByWithRelationInput
 }
 
 export type ProjectWhereUniqueInput = Prisma.AtLeast<{
@@ -227,6 +229,7 @@ export type ProjectWhereUniqueInput = Prisma.AtLeast<{
   updatedAt?: Prisma.DateTimeFilter<"Project"> | Date | string
   owner?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   assets?: Prisma.AssetListRelationFilter
+  scene?: Prisma.XOR<Prisma.ProjectSceneNullableScalarRelationFilter, Prisma.ProjectSceneWhereInput> | null
 }, "id">
 
 export type ProjectOrderByWithAggregationInput = {
@@ -264,6 +267,7 @@ export type ProjectCreateInput = {
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutProjectsInput
   assets?: Prisma.AssetCreateNestedManyWithoutProjectsInput
+  scene?: Prisma.ProjectSceneCreateNestedOneWithoutProjectInput
 }
 
 export type ProjectUncheckedCreateInput = {
@@ -275,6 +279,7 @@ export type ProjectUncheckedCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   assets?: Prisma.AssetUncheckedCreateNestedManyWithoutProjectsInput
+  scene?: Prisma.ProjectSceneUncheckedCreateNestedOneWithoutProjectInput
 }
 
 export type ProjectUpdateInput = {
@@ -286,6 +291,7 @@ export type ProjectUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
   assets?: Prisma.AssetUpdateManyWithoutProjectsNestedInput
+  scene?: Prisma.ProjectSceneUpdateOneWithoutProjectNestedInput
 }
 
 export type ProjectUncheckedUpdateInput = {
@@ -297,6 +303,7 @@ export type ProjectUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   assets?: Prisma.AssetUncheckedUpdateManyWithoutProjectsNestedInput
+  scene?: Prisma.ProjectSceneUncheckedUpdateOneWithoutProjectNestedInput
 }
 
 export type ProjectCreateManyInput = {
@@ -368,6 +375,11 @@ export type ProjectMinOrderByAggregateInput = {
   updatedAt?: Prisma.SortOrder
 }
 
+export type ProjectScalarRelationFilter = {
+  is?: Prisma.ProjectWhereInput
+  isNot?: Prisma.ProjectWhereInput
+}
+
 export type ProjectCreateNestedManyWithoutOwnerInput = {
   create?: Prisma.XOR<Prisma.ProjectCreateWithoutOwnerInput, Prisma.ProjectUncheckedCreateWithoutOwnerInput> | Prisma.ProjectCreateWithoutOwnerInput[] | Prisma.ProjectUncheckedCreateWithoutOwnerInput[]
   connectOrCreate?: Prisma.ProjectCreateOrConnectWithoutOwnerInput | Prisma.ProjectCreateOrConnectWithoutOwnerInput[]
@@ -412,6 +424,20 @@ export type ProjectUncheckedUpdateManyWithoutOwnerNestedInput = {
 
 export type EnumProjectPrivacyFieldUpdateOperationsInput = {
   set?: $Enums.ProjectPrivacy
+}
+
+export type ProjectCreateNestedOneWithoutSceneInput = {
+  create?: Prisma.XOR<Prisma.ProjectCreateWithoutSceneInput, Prisma.ProjectUncheckedCreateWithoutSceneInput>
+  connectOrCreate?: Prisma.ProjectCreateOrConnectWithoutSceneInput
+  connect?: Prisma.ProjectWhereUniqueInput
+}
+
+export type ProjectUpdateOneRequiredWithoutSceneNestedInput = {
+  create?: Prisma.XOR<Prisma.ProjectCreateWithoutSceneInput, Prisma.ProjectUncheckedCreateWithoutSceneInput>
+  connectOrCreate?: Prisma.ProjectCreateOrConnectWithoutSceneInput
+  upsert?: Prisma.ProjectUpsertWithoutSceneInput
+  connect?: Prisma.ProjectWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ProjectUpdateToOneWithWhereWithoutSceneInput, Prisma.ProjectUpdateWithoutSceneInput>, Prisma.ProjectUncheckedUpdateWithoutSceneInput>
 }
 
 export type ProjectCreateNestedManyWithoutAssetsInput = {
@@ -460,6 +486,7 @@ export type ProjectCreateWithoutOwnerInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   assets?: Prisma.AssetCreateNestedManyWithoutProjectsInput
+  scene?: Prisma.ProjectSceneCreateNestedOneWithoutProjectInput
 }
 
 export type ProjectUncheckedCreateWithoutOwnerInput = {
@@ -470,6 +497,7 @@ export type ProjectUncheckedCreateWithoutOwnerInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   assets?: Prisma.AssetUncheckedCreateNestedManyWithoutProjectsInput
+  scene?: Prisma.ProjectSceneUncheckedCreateNestedOneWithoutProjectInput
 }
 
 export type ProjectCreateOrConnectWithoutOwnerInput = {
@@ -511,6 +539,66 @@ export type ProjectScalarWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"Project"> | Date | string
 }
 
+export type ProjectCreateWithoutSceneInput = {
+  id?: string
+  name: string
+  description?: string | null
+  visibility?: $Enums.ProjectPrivacy
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  owner: Prisma.UserCreateNestedOneWithoutProjectsInput
+  assets?: Prisma.AssetCreateNestedManyWithoutProjectsInput
+}
+
+export type ProjectUncheckedCreateWithoutSceneInput = {
+  id?: string
+  name: string
+  description?: string | null
+  ownerId: string
+  visibility?: $Enums.ProjectPrivacy
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  assets?: Prisma.AssetUncheckedCreateNestedManyWithoutProjectsInput
+}
+
+export type ProjectCreateOrConnectWithoutSceneInput = {
+  where: Prisma.ProjectWhereUniqueInput
+  create: Prisma.XOR<Prisma.ProjectCreateWithoutSceneInput, Prisma.ProjectUncheckedCreateWithoutSceneInput>
+}
+
+export type ProjectUpsertWithoutSceneInput = {
+  update: Prisma.XOR<Prisma.ProjectUpdateWithoutSceneInput, Prisma.ProjectUncheckedUpdateWithoutSceneInput>
+  create: Prisma.XOR<Prisma.ProjectCreateWithoutSceneInput, Prisma.ProjectUncheckedCreateWithoutSceneInput>
+  where?: Prisma.ProjectWhereInput
+}
+
+export type ProjectUpdateToOneWithWhereWithoutSceneInput = {
+  where?: Prisma.ProjectWhereInput
+  data: Prisma.XOR<Prisma.ProjectUpdateWithoutSceneInput, Prisma.ProjectUncheckedUpdateWithoutSceneInput>
+}
+
+export type ProjectUpdateWithoutSceneInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.EnumProjectPrivacyFieldUpdateOperationsInput | $Enums.ProjectPrivacy
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  owner?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
+  assets?: Prisma.AssetUpdateManyWithoutProjectsNestedInput
+}
+
+export type ProjectUncheckedUpdateWithoutSceneInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ownerId?: Prisma.StringFieldUpdateOperationsInput | string
+  visibility?: Prisma.EnumProjectPrivacyFieldUpdateOperationsInput | $Enums.ProjectPrivacy
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  assets?: Prisma.AssetUncheckedUpdateManyWithoutProjectsNestedInput
+}
+
 export type ProjectCreateWithoutAssetsInput = {
   id?: string
   name: string
@@ -519,6 +607,7 @@ export type ProjectCreateWithoutAssetsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   owner: Prisma.UserCreateNestedOneWithoutProjectsInput
+  scene?: Prisma.ProjectSceneCreateNestedOneWithoutProjectInput
 }
 
 export type ProjectUncheckedCreateWithoutAssetsInput = {
@@ -529,6 +618,7 @@ export type ProjectUncheckedCreateWithoutAssetsInput = {
   visibility?: $Enums.ProjectPrivacy
   createdAt?: Date | string
   updatedAt?: Date | string
+  scene?: Prisma.ProjectSceneUncheckedCreateNestedOneWithoutProjectInput
 }
 
 export type ProjectCreateOrConnectWithoutAssetsInput = {
@@ -569,6 +659,7 @@ export type ProjectUpdateWithoutOwnerInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   assets?: Prisma.AssetUpdateManyWithoutProjectsNestedInput
+  scene?: Prisma.ProjectSceneUpdateOneWithoutProjectNestedInput
 }
 
 export type ProjectUncheckedUpdateWithoutOwnerInput = {
@@ -579,6 +670,7 @@ export type ProjectUncheckedUpdateWithoutOwnerInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   assets?: Prisma.AssetUncheckedUpdateManyWithoutProjectsNestedInput
+  scene?: Prisma.ProjectSceneUncheckedUpdateOneWithoutProjectNestedInput
 }
 
 export type ProjectUncheckedUpdateManyWithoutOwnerInput = {
@@ -598,6 +690,7 @@ export type ProjectUpdateWithoutAssetsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   owner?: Prisma.UserUpdateOneRequiredWithoutProjectsNestedInput
+  scene?: Prisma.ProjectSceneUpdateOneWithoutProjectNestedInput
 }
 
 export type ProjectUncheckedUpdateWithoutAssetsInput = {
@@ -608,6 +701,7 @@ export type ProjectUncheckedUpdateWithoutAssetsInput = {
   visibility?: Prisma.EnumProjectPrivacyFieldUpdateOperationsInput | $Enums.ProjectPrivacy
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  scene?: Prisma.ProjectSceneUncheckedUpdateOneWithoutProjectNestedInput
 }
 
 export type ProjectUncheckedUpdateManyWithoutAssetsInput = {
@@ -661,6 +755,7 @@ export type ProjectSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   updatedAt?: boolean
   owner?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   assets?: boolean | Prisma.Project$assetsArgs<ExtArgs>
+  scene?: boolean | Prisma.Project$sceneArgs<ExtArgs>
   _count?: boolean | Prisma.ProjectCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["project"]>
 
@@ -700,6 +795,7 @@ export type ProjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
 export type ProjectInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   owner?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   assets?: boolean | Prisma.Project$assetsArgs<ExtArgs>
+  scene?: boolean | Prisma.Project$sceneArgs<ExtArgs>
   _count?: boolean | Prisma.ProjectCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ProjectIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -714,6 +810,7 @@ export type $ProjectPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
   objects: {
     owner: Prisma.$UserPayload<ExtArgs>
     assets: Prisma.$AssetPayload<ExtArgs>[]
+    scene: Prisma.$ProjectScenePayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1119,6 +1216,7 @@ export interface Prisma__ProjectClient<T, Null = never, ExtArgs extends runtime.
   readonly [Symbol.toStringTag]: "PrismaPromise"
   owner<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   assets<T extends Prisma.Project$assetsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Project$assetsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AssetPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  scene<T extends Prisma.Project$sceneArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Project$sceneArgs<ExtArgs>>): Prisma.Prisma__ProjectSceneClient<runtime.Types.Result.GetResult<Prisma.$ProjectScenePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1572,6 +1670,25 @@ export type Project$assetsArgs<ExtArgs extends runtime.Types.Extensions.Internal
   take?: number
   skip?: number
   distinct?: Prisma.AssetScalarFieldEnum | Prisma.AssetScalarFieldEnum[]
+}
+
+/**
+ * Project.scene
+ */
+export type Project$sceneArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ProjectScene
+   */
+  select?: Prisma.ProjectSceneSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ProjectScene
+   */
+  omit?: Prisma.ProjectSceneOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ProjectSceneInclude<ExtArgs> | null
+  where?: Prisma.ProjectSceneWhereInput
 }
 
 /**

@@ -10,7 +10,7 @@ import AssetPreview from "@/components/asset-preview";
 import { getAssetDisplayTitle, getAssetForUser } from "@/lib/projects";
 import { requireSession } from "@/lib/session";
 import { updateAssetDetailsAction } from "@/app/(protected)/assets/[assetId]/actions";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 
 function formatSize(sizeBytes: number) {
   if (sizeBytes < 1024) {
@@ -58,10 +58,16 @@ export default async function AssetDetailPage({
             Back to assets
           </Link>
         </Button>
-        <div>
+        <div className="flex items-start justify-between gap-3">
           <h1 className="text-3xl font-semibold">
             {getAssetDisplayTitle(asset)}
           </h1>
+          <Button asChild variant="outline" size="sm">
+            <a href={`/api/assets/${asset.id}/file`} download={asset.fileName}>
+              <Download />
+              Download asset
+            </a>
+          </Button>
         </div>
       </div>
 
@@ -129,7 +135,7 @@ export default async function AssetDetailPage({
             Storage: {asset.storagePath}
           </p>
           <p>
-            Workspaces:{" "}
+            Projects:{" "}
             {asset.projects.length > 0 ? (
               asset.projects.map((project, index) => (
                 <span key={project.id}>

@@ -389,6 +389,7 @@ export const ModelName = {
   Account: 'Account',
   Verification: 'Verification',
   Project: 'Project',
+  ProjectScene: 'ProjectScene',
   Asset: 'Asset'
 } as const
 
@@ -405,7 +406,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "project" | "asset"
+    modelProps: "user" | "session" | "account" | "verification" | "project" | "projectScene" | "asset"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -779,6 +780,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    ProjectScene: {
+      payload: Prisma.$ProjectScenePayload<ExtArgs>
+      fields: Prisma.ProjectSceneFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ProjectSceneFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectScenePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ProjectSceneFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectScenePayload>
+        }
+        findFirst: {
+          args: Prisma.ProjectSceneFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectScenePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ProjectSceneFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectScenePayload>
+        }
+        findMany: {
+          args: Prisma.ProjectSceneFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectScenePayload>[]
+        }
+        create: {
+          args: Prisma.ProjectSceneCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectScenePayload>
+        }
+        createMany: {
+          args: Prisma.ProjectSceneCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ProjectSceneCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectScenePayload>[]
+        }
+        delete: {
+          args: Prisma.ProjectSceneDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectScenePayload>
+        }
+        update: {
+          args: Prisma.ProjectSceneUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectScenePayload>
+        }
+        deleteMany: {
+          args: Prisma.ProjectSceneDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ProjectSceneUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ProjectSceneUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectScenePayload>[]
+        }
+        upsert: {
+          args: Prisma.ProjectSceneUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ProjectScenePayload>
+        }
+        aggregate: {
+          args: Prisma.ProjectSceneAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateProjectScene>
+        }
+        groupBy: {
+          args: Prisma.ProjectSceneGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProjectSceneGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ProjectSceneCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ProjectSceneCountAggregateOutputType> | number
+        }
+      }
+    }
     Asset: {
       payload: Prisma.$AssetPayload<ExtArgs>
       fields: Prisma.AssetFieldRefs
@@ -963,6 +1038,17 @@ export const ProjectScalarFieldEnum = {
 export type ProjectScalarFieldEnum = (typeof ProjectScalarFieldEnum)[keyof typeof ProjectScalarFieldEnum]
 
 
+export const ProjectSceneScalarFieldEnum = {
+  id: 'id',
+  projectId: 'projectId',
+  data: 'data',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ProjectSceneScalarFieldEnum = (typeof ProjectSceneScalarFieldEnum)[keyof typeof ProjectSceneScalarFieldEnum]
+
+
 export const AssetScalarFieldEnum = {
   id: 'id',
   ownerId: 'ownerId',
@@ -986,6 +1072,13 @@ export const SortOrder = {
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
 
 
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
+
+
 export const QueryMode = {
   default: 'default',
   insensitive: 'insensitive'
@@ -1000,6 +1093,15 @@ export const NullsOrder = {
 } as const
 
 export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
+
+
+export const JsonNullValueFilter = {
+  DbNull: DbNull,
+  JsonNull: JsonNull,
+  AnyNull: AnyNull
+} as const
+
+export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
 
 
 
@@ -1054,6 +1156,20 @@ export type EnumProjectPrivacyFieldRefInput<$PrismaModel> = FieldRefInputType<$P
  * Reference to a field of type 'ProjectPrivacy[]'
  */
 export type ListEnumProjectPrivacyFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ProjectPrivacy[]'>
+    
+
+
+/**
+ * Reference to a field of type 'Json'
+ */
+export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
+    
+
+
+/**
+ * Reference to a field of type 'QueryMode'
+ */
+export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
     
 
 
@@ -1184,6 +1300,7 @@ export type GlobalOmitConfig = {
   account?: Prisma.AccountOmit
   verification?: Prisma.VerificationOmit
   project?: Prisma.ProjectOmit
+  projectScene?: Prisma.ProjectSceneOmit
   asset?: Prisma.AssetOmit
 }
 

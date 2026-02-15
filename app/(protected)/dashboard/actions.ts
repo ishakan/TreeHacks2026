@@ -18,6 +18,11 @@ export async function createProjectAction(formData: FormData) {
       name,
       description: description || null,
       ownerId: session.user.id,
+      scene: {
+        create: {
+          data: { objects: [] },
+        },
+      },
     },
   });
 

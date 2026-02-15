@@ -29,7 +29,7 @@ export default function AssetCardThumbnail({
     <img
       src={thumbnailSrc}
       alt={`${fileName} preview`}
-      className="h-40 w-full rounded-md border object-cover"
+      className="h-40 w-full rounded-t-md border object-cover"
       onError={() => setHasThumbnail(false)}
     />
   );

@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { MoreVertical, Trash2 } from "lucide-react";
+import { MoreVertical, Trash2, Wand2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,12 +25,18 @@ import {
 type AssetCardMenuProps = {
   assetId: string;
   fileName: string;
+  mimeType: string;
 };
 
-export default function AssetCardMenu({ assetId, fileName }: AssetCardMenuProps) {
+function isEditableGlb(fileName: string, mimeType: string) {
+  return mimeType.toLowerCase().includes("gltf-binary") || fileName.toLowerCase().endsWith(".glb");
+}
+
+export default function AssetCardMenu({ assetId, fileName, mimeType }: AssetCardMenuProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const canEdit = isEditableGlb(fileName, mimeType);
 
   const onDelete = async () => {
     if (isDeleting) {
@@ -64,6 +71,12 @@ export default function AssetCardMenu({ assetId, fileName }: AssetCardMenuProps)
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem asChild disabled={!canEdit}>
+            <Link href={`/generate/asset-editor?assetId=${encodeURIComponent(assetId)}`}>
+              <Wand2 className="size-4" />
+              Open in asset editor
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem
             variant="destructive"
             onSelect={() => {

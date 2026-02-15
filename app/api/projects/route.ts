@@ -54,6 +54,11 @@ export async function POST(request: Request) {
           : visibility === "UNLISTED"
             ? "UNLISTED"
             : "PRIVATE",
+      scene: {
+        create: {
+          data: { objects: [] },
+        },
+      },
     },
     select: {
       id: true,
