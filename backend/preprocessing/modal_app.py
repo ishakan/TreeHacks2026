@@ -1,4 +1,5 @@
 from pathlib import Path
+import base64
 
 import modal
 
@@ -23,7 +24,8 @@ image = (
         "matplotlib",
         "onnxruntime",
         "onnx",
-        "bottleneck==1.3.5"
+        "bottleneck==1.3.5",
+        "fastapi[standard]"
     )
     .run_commands(
         "mkdir -p /weights",
@@ -130,3 +132,9 @@ class GroundedSAM:
             "class_id": detections.class_id.tolist(),
             "masks": masks_array.tolist(),
         }
+
+    @modal.fastapi_endpoint(method="POST")
+    def segment_endpoint(self, payload: dict) -> dict:
+        image_bytes = base64.b64decode(payload["image_b64"])
+        classes = payload["classes"]
+        return self.segment(image_bytes, classes)

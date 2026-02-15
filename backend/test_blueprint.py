@@ -114,20 +114,30 @@ def fetch_and_save(session_id: str) -> tuple[Path, dict]:
     d = SAVE_DIR / session_id
     d.mkdir(parents=True, exist_ok=True)
 
-    if data.get("html"):
+    saved: list[str] = []
+
+    if "html" in data:
         (d / "blueprint.html").write_text(data["html"])
-    if data.get("dimensions"):
+        saved.append("blueprint.html")
+    if "dimensions" in data:
         (d / "blueprint_dimensions.json").write_text(
             json.dumps(data["dimensions"], indent=2)
         )
-    if data.get("agentOutput"):
-        (d / "agent_output.txt").write_text(data["agentOutput"])
-    if data.get("scadCode"):
+        saved.append("blueprint_dimensions.json")
+    if "scadCode" in data:
         (d / "model.scad").write_text(data["scadCode"])
-    if data.get("parameters"):
+        saved.append("model.scad")
+    if "parameters" in data:
         (d / "parameters.json").write_text(
             json.dumps(data["parameters"], indent=2)
         )
+        saved.append("parameters.json")
+
+    if saved:
+        print(f"  {DIM}Saved: {', '.join(saved)}{RESET}")
+    else:
+        print(f"  {YELLOW}No artefact files returned by server{RESET}")
+
     return d, data
 
 

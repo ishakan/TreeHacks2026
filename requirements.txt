@@ -7,6 +7,5 @@ sse-starlette
 httpx
 python-dotenv
 modal
-claude-agent-sdk
 pydantic
 opencv-python-headless

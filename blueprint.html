@@ -3,23 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Blueprint: Classic Round Stool with Four Legs</title>
+<title>Blueprint: Classic Round Stool</title>
 <style>
   :root {
-    /* All dimensions in mm — longest dimension (overall_height) normalised to 100mm */
-    --seat_diameter: 67;
+    /* All dimensions in mm — longest dimension (overall_height) normalised to ~100mm */
+    --seat_diameter: 70;
     --seat_thickness: 6;
     --overall_height: 100;
     --leg_length: 94;
     --leg_diameter: 5;
     --leg_splay_angle: 8;
-    --leg_spread_radius: 22;
-    --foot_spread_diameter: 70;
+    --leg_spread_radius: 24;
+    --foot_spread_diameter: 74;
     --seat_edge_radius: 2;
     --leg_count: 4;
-    --stretcher_height: 33;
+    --stretcher_height: 30;
     --stretcher_diameter: 3;
-    --stretcher_ring_diameter: 50;
+    --stretcher_ring_diameter: 52;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -89,9 +89,7 @@
   .dim-text-sm   { font-family: 'Courier New', monospace; font-size: 7px; fill: #1565C0; }
   .fill-seat     { fill: #f0f0f0; }
   .fill-leg      { fill: #e2e2e2; }
-  .fill-foot     { fill: #eaeaea; }
   .annotation    { font-family: 'Courier New', monospace; font-size: 7.5px; fill: #777; }
-  .section-hatch { fill: url(#hatch); stroke: #111; stroke-width: 1; }
 
   .title-block {
     max-width: 1120px;
@@ -112,276 +110,262 @@
 <body>
 
 <h2>Blueprint &mdash; Classic Round Stool</h2>
-<p class="subtitle">Circular seat &bull; Four splayed cylindrical legs &bull; Cross-brace stretchers</p>
+<p class="subtitle">Circular seat &bull; Four splayed cylindrical legs &bull; Cross-brace stretcher ring</p>
 
 <div class="views">
 
   <!-- ==================== FRONT VIEW ==================== -->
   <div class="view-container">
     <div class="view-label">Front View</div>
-    <svg viewBox="-30 -40 380 440" width="520" height="600">
-      <defs>
-        <pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <line x1="0" y1="0" x2="0" y2="4" stroke="#ccc" stroke-width="0.5"/>
-        </pattern>
-      </defs>
+    <svg viewBox="-40 -50 400 460" width="520" height="600">
 
-      <!-- Center line -->
-      <line x1="160" y1="-30" x2="160" y2="370" class="center-line"/>
+      <!-- Center line (vertical axis of symmetry) -->
+      <line x1="160" y1="-40" x2="160" y2="380" class="center-line"/>
 
-      <!-- ═══ SEAT ═══ -->
-      <!-- Seat body rectangle -->
-      <rect x="59" y="40" width="202" height="18" rx="3" class="outline fill-seat"/>
-      <!-- Curved top to show roundness -->
-      <ellipse cx="160" cy="40" rx="101" ry="7" class="outline" fill="#f5f5f5"/>
-      <!-- Side edges -->
-      <line x1="59" y1="40" x2="59" y2="58" class="outline"/>
-      <line x1="261" y1="40" x2="261" y2="58" class="outline"/>
-      <!-- Bottom edge -->
-      <line x1="59" y1="58" x2="261" y2="58" class="outline"/>
-      <!-- Bottom curve hint -->
-      <ellipse cx="160" cy="58" rx="101" ry="3" class="outline-thin" opacity="0.2"/>
+      <!-- SEAT -->
+      <!-- Seat side profile: rectangle with top ellipse for 3D feel -->
+      <rect x="55" y="40" width="210" height="18" rx="2" class="outline fill-seat"/>
+      <ellipse cx="160" cy="40" rx="105" ry="7" class="outline" fill="#f5f5f5"/>
+      <line x1="55" y1="40" x2="55" y2="58" class="outline"/>
+      <line x1="265" y1="40" x2="265" y2="58" class="outline"/>
+      <line x1="55" y1="58" x2="265" y2="58" class="outline"/>
+      <!-- Subtle bottom curve -->
+      <ellipse cx="160" cy="58" rx="105" ry="3" class="outline-thin" opacity="0.15"/>
 
-      <!-- ═══ FRONT LEGS (visible, splayed) ═══ -->
-      <!-- Front-left leg -->
-      <polygon points="111,58 101,58 80,330 90,330" class="outline fill-leg"/>
+      <!-- FRONT LEGS (visible, splayed outward) -->
+      <!-- Front-left leg (5mm dia = ~8px wide at this scale) -->
+      <polygon points="113,58 105,58 80,335 88,335" class="outline fill-leg"/>
       <!-- Front-right leg -->
-      <polygon points="219,58 209,58 230,330 240,330" class="outline fill-leg"/>
+      <polygon points="215,58 207,58 232,335 240,335" class="outline fill-leg"/>
 
-      <!-- ═══ BACK LEGS (hidden, dashed) ═══ -->
-      <line x1="123" y1="58" x2="92" y2="330" class="hidden-line"/>
-      <line x1="133" y1="58" x2="102" y2="330" class="hidden-line"/>
-      <line x1="187" y1="58" x2="218" y2="330" class="hidden-line"/>
-      <line x1="197" y1="58" x2="228" y2="330" class="hidden-line"/>
+      <!-- BACK LEGS (hidden lines — behind front legs) -->
+      <line x1="125" y1="58" x2="96" y2="335" class="hidden-line"/>
+      <line x1="133" y1="58" x2="104" y2="335" class="hidden-line"/>
+      <line x1="187" y1="58" x2="216" y2="335" class="hidden-line"/>
+      <line x1="195" y1="58" x2="224" y2="335" class="hidden-line"/>
 
-      <!-- ═══ STRETCHERS (cross braces) ═══ -->
-      <!-- Height from floor = 33mm → y = 330 - (33/100)*290 = 234 (approx) -->
-      <!-- Front-left to front-right stretcher -->
-      <line x1="88" y1="234" x2="232" y2="234" class="outline-thin"/>
-      <line x1="88" y1="238" x2="232" y2="238" class="outline-thin"/>
+      <!-- STRETCHER (cross-brace at stretcher_height: 30mm from floor) -->
+      <!-- Front stretcher bar between front legs -->
+      <line x1="86" y1="244" x2="234" y2="244" class="outline-thin"/>
+      <line x1="86" y1="248" x2="234" y2="248" class="outline-thin"/>
       <!-- Back stretcher (hidden) -->
-      <line x1="97" y1="236" x2="223" y2="236" class="hidden-line"/>
+      <line x1="100" y1="246" x2="220" y2="246" class="hidden-line"/>
 
-      <!-- ═══ FLOOR LINE ═══ -->
-      <line x1="40" y1="332" x2="280" y2="332" stroke="#aaa" stroke-width="0.4" stroke-dasharray="2,2"/>
+      <!-- FLOOR LINE -->
+      <line x1="30" y1="337" x2="290" y2="337" stroke="#aaa" stroke-width="0.4" stroke-dasharray="2,2"/>
 
-      <!-- ═══════════ DIMENSION LINES ═══════════ -->
+      <!-- DIMENSION LINES -->
 
-      <!-- seat_diameter (top) -->
-      <line x1="59" y1="37" x2="59" y2="14" class="ext-line"/>
-      <line x1="261" y1="37" x2="261" y2="14" class="ext-line"/>
-      <line x1="59" y1="20" x2="261" y2="20" class="dim-line"/>
-      <polygon points="59,20 65,17.5 65,22.5" class="dim-arrow"/>
-      <polygon points="261,20 255,17.5 255,22.5" class="dim-arrow"/>
-      <text x="116" y="14" class="dim-text">seat_diameter: 67mm</text>
+      <!-- seat_diameter: 70mm (top horizontal) -->
+      <line x1="55" y1="37" x2="55" y2="10" class="ext-line"/>
+      <line x1="265" y1="37" x2="265" y2="10" class="ext-line"/>
+      <line x1="55" y1="16" x2="265" y2="16" class="dim-line"/>
+      <polygon points="55,16 62,13 62,19" class="dim-arrow"/>
+      <polygon points="265,16 258,13 258,19" class="dim-arrow"/>
+      <text x="112" y="10" class="dim-text">seat_diameter: 70mm</text>
 
-      <!-- overall_height (right side) -->
-      <line x1="266" y1="33" x2="298" y2="33" class="ext-line"/>
-      <line x1="266" y1="332" x2="298" y2="332" class="ext-line"/>
-      <line x1="292" y1="33" x2="292" y2="332" class="dim-line"/>
-      <polygon points="292,33 289,39 295,39" class="dim-arrow"/>
-      <polygon points="292,332 289,326 295,326" class="dim-arrow"/>
-      <text x="298" y="190" class="dim-text" transform="rotate(90,298,190)">overall_height: 100mm</text>
+      <!-- overall_height: 100mm (right side vertical) -->
+      <line x1="270" y1="33" x2="305" y2="33" class="ext-line"/>
+      <line x1="270" y1="337" x2="305" y2="337" class="ext-line"/>
+      <line x1="298" y1="33" x2="298" y2="337" class="dim-line"/>
+      <polygon points="298,33 295,40 301,40" class="dim-arrow"/>
+      <polygon points="298,337 295,330 301,330" class="dim-arrow"/>
+      <text x="305" y="192" class="dim-text" transform="rotate(90,305,192)">overall_height: 100mm</text>
 
-      <!-- seat_thickness (far right) -->
-      <line x1="264" y1="40" x2="318" y2="40" class="ext-line"/>
-      <line x1="264" y1="58" x2="318" y2="58" class="ext-line"/>
-      <line x1="314" y1="40" x2="314" y2="58" class="dim-line"/>
-      <polygon points="314,40 311,44 317,44" class="dim-arrow"/>
-      <polygon points="314,58 311,54 317,54" class="dim-arrow"/>
-      <text x="320" y="52" class="dim-text-sm">seat_thickness: 6mm</text>
+      <!-- seat_thickness: 6mm (far right detail) -->
+      <line x1="268" y1="40" x2="328" y2="40" class="ext-line"/>
+      <line x1="268" y1="58" x2="328" y2="58" class="ext-line"/>
+      <line x1="322" y1="40" x2="322" y2="58" class="dim-line"/>
+      <polygon points="322,40 319,44.5 325,44.5" class="dim-arrow"/>
+      <polygon points="322,58 319,53.5 325,53.5" class="dim-arrow"/>
+      <text x="328" y="52" class="dim-text-sm">seat_thickness: 6mm</text>
 
-      <!-- leg_length (left side) -->
-      <line x1="56" y1="58" x2="18" y2="58" class="ext-line"/>
-      <line x1="56" y1="332" x2="18" y2="332" class="ext-line"/>
-      <line x1="24" y1="58" x2="24" y2="332" class="dim-line"/>
-      <polygon points="24,58 21,64 27,64" class="dim-arrow"/>
-      <polygon points="24,332 21,326 27,326" class="dim-arrow"/>
-      <text x="18" y="202" class="dim-text" transform="rotate(-90,18,202)">leg_length: 94mm</text>
+      <!-- leg_length: 94mm (left side vertical) -->
+      <line x1="52" y1="58" x2="12" y2="58" class="ext-line"/>
+      <line x1="52" y1="337" x2="12" y2="337" class="ext-line"/>
+      <line x1="18" y1="58" x2="18" y2="337" class="dim-line"/>
+      <polygon points="18,58 15,65 21,65" class="dim-arrow"/>
+      <polygon points="18,337 15,330 21,330" class="dim-arrow"/>
+      <text x="12" y="204" class="dim-text" transform="rotate(-90,12,204)">leg_length: 94mm</text>
 
-      <!-- foot_spread_diameter (bottom) -->
-      <line x1="85" y1="336" x2="85" y2="358" class="ext-line"/>
-      <line x1="235" y1="336" x2="235" y2="358" class="ext-line"/>
-      <line x1="85" y1="352" x2="235" y2="352" class="dim-line"/>
-      <polygon points="85,352 91,349.5 91,354.5" class="dim-arrow"/>
-      <polygon points="235,352 229,349.5 229,354.5" class="dim-arrow"/>
-      <text x="106" y="366" class="dim-text">foot_spread_dia: 70mm</text>
+      <!-- foot_spread_diameter: 74mm (bottom horizontal) -->
+      <line x1="84" y1="340" x2="84" y2="368" class="ext-line"/>
+      <line x1="236" y1="340" x2="236" y2="368" class="ext-line"/>
+      <line x1="84" y1="360" x2="236" y2="360" class="dim-line"/>
+      <polygon points="84,360 91,357 91,363" class="dim-arrow"/>
+      <polygon points="236,360 229,357 229,363" class="dim-arrow"/>
+      <text x="104" y="376" class="dim-text">foot_spread_dia: 74mm</text>
 
-      <!-- leg_diameter callout -->
-      <line x1="101" y1="160" x2="54" y2="140" class="dim-line"/>
-      <circle cx="101" cy="160" r="1.8" fill="#1565C0"/>
-      <text x="8" y="136" class="dim-text-sm">leg_diameter: 5mm</text>
+      <!-- leg_diameter: 5mm (callout leader) -->
+      <line x1="105" y1="160" x2="48" y2="136" class="dim-line"/>
+      <circle cx="105" cy="160" r="2" fill="#1565C0"/>
+      <text x="2" y="132" class="dim-text-sm">leg_diameter: 5mm</text>
 
-      <!-- stretcher_height (from floor) -->
-      <line x1="79" y1="332" x2="56" y2="332" class="ext-line"/>
-      <line x1="79" y1="234" x2="56" y2="234" class="ext-line"/>
-      <line x1="60" y1="332" x2="60" y2="234" class="dim-line"/>
-      <polygon points="60,332 57,326 63,326" class="dim-arrow"/>
-      <polygon points="60,234 57,240 63,240" class="dim-arrow"/>
-      <text x="14" y="288" class="dim-text-sm">stretcher_h: 33mm</text>
+      <!-- stretcher_height: 30mm (left side, from floor to stretcher) -->
+      <line x1="78" y1="337" x2="48" y2="337" class="ext-line"/>
+      <line x1="78" y1="244" x2="48" y2="244" class="ext-line"/>
+      <line x1="54" y1="337" x2="54" y2="244" class="dim-line"/>
+      <polygon points="54,337 51,330 57,330" class="dim-arrow"/>
+      <polygon points="54,244 51,251 57,251" class="dim-arrow"/>
+      <text x="6" y="296" class="dim-text-sm">stretcher_h: 30mm</text>
 
-      <!-- stretcher_diameter callout -->
-      <line x1="160" y1="234" x2="180" y2="218" class="dim-line"/>
-      <circle cx="160" cy="234" r="1.5" fill="#1565C0"/>
-      <text x="182" y="216" class="dim-text-sm">stretcher_dia: 3mm</text>
+      <!-- stretcher_diameter: 3mm (callout) -->
+      <line x1="160" y1="244" x2="190" y2="222" class="dim-line"/>
+      <circle cx="160" cy="244" r="1.5" fill="#1565C0"/>
+      <text x="194" y="220" class="dim-text-sm">stretcher_dia: 3mm</text>
 
-      <!-- leg_splay_angle indicator -->
-      <line x1="106" y1="58" x2="106" y2="160" class="dim-line" stroke-dasharray="2,2" opacity="0.6"/>
-      <line x1="106" y1="58" x2="97" y2="160" class="dim-line" stroke-dasharray="2,2" opacity="0.6"/>
-      <path d="M 106,130 A 72,72 0 0,0 103,130" class="dim-line"/>
-      <text x="76" y="128" class="dim-text-sm">8&deg;</text>
+      <!-- leg_splay_angle: 8 degrees (angle indicator near top of leg) -->
+      <line x1="109" y1="58" x2="109" y2="170" class="dim-line" stroke-dasharray="2,2" opacity="0.5"/>
+      <line x1="109" y1="58" x2="98" y2="170" class="dim-line" stroke-dasharray="2,2" opacity="0.5"/>
+      <path d="M 109,140 A 82,82 0 0,0 106,140" class="dim-line"/>
+      <text x="74" y="138" class="dim-text-sm">8&deg;</text>
     </svg>
   </div>
 
   <!-- ==================== SIDE VIEW ==================== -->
   <div class="view-container">
     <div class="view-label">Side View (Right)</div>
-    <svg viewBox="-30 -40 380 440" width="520" height="600">
+    <svg viewBox="-40 -50 400 460" width="520" height="600">
+
       <!-- Center line -->
-      <line x1="160" y1="-30" x2="160" y2="370" class="center-line"/>
+      <line x1="160" y1="-40" x2="160" y2="380" class="center-line"/>
 
-      <!-- ═══ SEAT ═══ -->
-      <rect x="59" y="40" width="202" height="18" rx="3" class="outline fill-seat"/>
-      <ellipse cx="160" cy="40" rx="101" ry="7" class="outline" fill="#f5f5f5"/>
-      <line x1="59" y1="40" x2="59" y2="58" class="outline"/>
-      <line x1="261" y1="40" x2="261" y2="58" class="outline"/>
-      <line x1="59" y1="58" x2="261" y2="58" class="outline"/>
+      <!-- SEAT -->
+      <rect x="55" y="40" width="210" height="18" rx="2" class="outline fill-seat"/>
+      <ellipse cx="160" cy="40" rx="105" ry="7" class="outline" fill="#f5f5f5"/>
+      <line x1="55" y1="40" x2="55" y2="58" class="outline"/>
+      <line x1="265" y1="40" x2="265" y2="58" class="outline"/>
+      <line x1="55" y1="58" x2="265" y2="58" class="outline"/>
 
-      <!-- ═══ SIDE LEGS (visible, splayed) ═══ -->
-      <!-- Near-left leg -->
-      <polygon points="111,58 101,58 80,330 90,330" class="outline fill-leg"/>
-      <!-- Near-right leg -->
-      <polygon points="219,58 209,58 230,330 240,330" class="outline fill-leg"/>
+      <!-- SIDE LEGS (visible) -->
+      <polygon points="113,58 105,58 80,335 88,335" class="outline fill-leg"/>
+      <polygon points="215,58 207,58 232,335 240,335" class="outline fill-leg"/>
 
-      <!-- ═══ FAR LEGS (hidden) ═══ -->
-      <line x1="123" y1="58" x2="92" y2="330" class="hidden-line"/>
-      <line x1="133" y1="58" x2="102" y2="330" class="hidden-line"/>
-      <line x1="187" y1="58" x2="218" y2="330" class="hidden-line"/>
-      <line x1="197" y1="58" x2="228" y2="330" class="hidden-line"/>
+      <!-- FAR LEGS (hidden) -->
+      <line x1="125" y1="58" x2="96" y2="335" class="hidden-line"/>
+      <line x1="133" y1="58" x2="104" y2="335" class="hidden-line"/>
+      <line x1="187" y1="58" x2="216" y2="335" class="hidden-line"/>
+      <line x1="195" y1="58" x2="224" y2="335" class="hidden-line"/>
 
-      <!-- ═══ STRETCHERS ═══ -->
-      <line x1="88" y1="234" x2="232" y2="234" class="outline-thin"/>
-      <line x1="88" y1="238" x2="232" y2="238" class="outline-thin"/>
-      <line x1="97" y1="236" x2="223" y2="236" class="hidden-line"/>
+      <!-- STRETCHERS -->
+      <line x1="86" y1="244" x2="234" y2="244" class="outline-thin"/>
+      <line x1="86" y1="248" x2="234" y2="248" class="outline-thin"/>
+      <line x1="100" y1="246" x2="220" y2="246" class="hidden-line"/>
 
       <!-- Floor line -->
-      <line x1="40" y1="332" x2="280" y2="332" stroke="#aaa" stroke-width="0.4" stroke-dasharray="2,2"/>
+      <line x1="30" y1="337" x2="290" y2="337" stroke="#aaa" stroke-width="0.4" stroke-dasharray="2,2"/>
 
-      <!-- ═══════════ DIMENSION LINES ═══════════ -->
+      <!-- DIMENSION LINES -->
 
-      <!-- seat_diameter (identical in side view — it's round) -->
-      <line x1="59" y1="37" x2="59" y2="14" class="ext-line"/>
-      <line x1="261" y1="37" x2="261" y2="14" class="ext-line"/>
-      <line x1="59" y1="20" x2="261" y2="20" class="dim-line"/>
-      <polygon points="59,20 65,17.5 65,22.5" class="dim-arrow"/>
-      <polygon points="261,20 255,17.5 255,22.5" class="dim-arrow"/>
-      <text x="116" y="14" class="dim-text">seat_diameter: 67mm</text>
+      <!-- seat_diameter (same in side view — circular seat) -->
+      <line x1="55" y1="37" x2="55" y2="10" class="ext-line"/>
+      <line x1="265" y1="37" x2="265" y2="10" class="ext-line"/>
+      <line x1="55" y1="16" x2="265" y2="16" class="dim-line"/>
+      <polygon points="55,16 62,13 62,19" class="dim-arrow"/>
+      <polygon points="265,16 258,13 258,19" class="dim-arrow"/>
+      <text x="112" y="10" class="dim-text">seat_diameter: 70mm</text>
 
-      <!-- leg_spread_radius (from centre to leg attachment) -->
-      <line x1="160" y1="64" x2="106" y2="64" class="dim-line"/>
-      <line x1="160" y1="60" x2="160" y2="70" class="ext-line"/>
-      <line x1="106" y1="60" x2="106" y2="70" class="ext-line"/>
-      <polygon points="158,64 152,61.5 152,66.5" class="dim-arrow"/>
-      <polygon points="108,64 114,61.5 114,66.5" class="dim-arrow"/>
-      <text x="112" y="78" class="dim-text-sm">leg_spread_r: 22mm</text>
+      <!-- leg_spread_radius: 24mm (centre to leg mount) -->
+      <line x1="160" y1="66" x2="109" y2="66" class="dim-line"/>
+      <line x1="160" y1="62" x2="160" y2="72" class="ext-line"/>
+      <line x1="109" y1="62" x2="109" y2="72" class="ext-line"/>
+      <polygon points="158,66 152,63 152,69" class="dim-arrow"/>
+      <polygon points="111,66 117,63 117,69" class="dim-arrow"/>
+      <text x="114" y="80" class="dim-text-sm">leg_spread_r: 24mm</text>
 
-      <!-- seat_edge_radius callout -->
-      <line x1="63" y1="40" x2="36" y2="26" class="dim-line"/>
-      <circle cx="63" cy="41" r="1.3" fill="#1565C0"/>
-      <text x="2" y="22" class="dim-text-sm">seat_edge_r: 2mm</text>
+      <!-- seat_edge_radius: 2mm (callout to top corner) -->
+      <line x1="59" y1="42" x2="30" y2="24" class="dim-line"/>
+      <circle cx="59" cy="42" r="1.5" fill="#1565C0"/>
+      <text x="-6" y="20" class="dim-text-sm">seat_edge_r: 2mm</text>
 
-      <!-- stretcher_ring_diameter (between legs at stretcher height) -->
-      <line x1="88" y1="240" x2="88" y2="260" class="ext-line"/>
-      <line x1="232" y1="240" x2="232" y2="260" class="ext-line"/>
-      <line x1="88" y1="255" x2="232" y2="255" class="dim-line"/>
-      <polygon points="88,255 94,252.5 94,257.5" class="dim-arrow"/>
-      <polygon points="232,255 226,252.5 226,257.5" class="dim-arrow"/>
-      <text x="110" y="268" class="dim-text">stretcher_ring_dia: 50mm</text>
+      <!-- stretcher_ring_diameter: 52mm (at stretcher level) -->
+      <line x1="86" y1="252" x2="86" y2="272" class="ext-line"/>
+      <line x1="234" y1="252" x2="234" y2="272" class="ext-line"/>
+      <line x1="86" y1="266" x2="234" y2="266" class="dim-line"/>
+      <polygon points="86,266 93,263 93,269" class="dim-arrow"/>
+      <polygon points="234,266 227,263 227,269" class="dim-arrow"/>
+      <text x="108" y="282" class="dim-text">stretcher_ring_dia: 52mm</text>
 
-      <!-- splay angle indicator -->
-      <line x1="215" y1="58" x2="215" y2="160" class="dim-line" stroke-dasharray="2,2" opacity="0.6"/>
-      <line x1="215" y1="58" x2="224" y2="160" class="dim-line" stroke-dasharray="2,2" opacity="0.6"/>
-      <path d="M 215,130 A 72,72 0 0,1 218,130" class="dim-line"/>
-      <text x="230" y="128" class="dim-text-sm">splay: 8&deg;</text>
+      <!-- Splay angle indicator (right side) -->
+      <line x1="211" y1="58" x2="211" y2="170" class="dim-line" stroke-dasharray="2,2" opacity="0.5"/>
+      <line x1="211" y1="58" x2="222" y2="170" class="dim-line" stroke-dasharray="2,2" opacity="0.5"/>
+      <path d="M 211,140 A 82,82 0 0,1 214,140" class="dim-line"/>
+      <text x="228" y="138" class="dim-text-sm">splay: 8&deg;</text>
 
-      <!-- Note about symmetry -->
-      <text x="160" y="380" text-anchor="middle" class="annotation">Rotated 90&deg; from Front View &mdash; symmetric for round seat</text>
+      <!-- Note -->
+      <text x="160" y="390" text-anchor="middle" class="annotation">Rotated 90&deg; from Front View &mdash; symmetric for circular seat</text>
     </svg>
   </div>
 
   <!-- ==================== TOP VIEW ==================== -->
   <div class="view-container">
     <div class="view-label">Top View (Plan)</div>
-    <svg viewBox="-20 -30 360 360" width="520" height="520">
-      <!-- Center lines -->
-      <line x1="160" y1="-20" x2="160" y2="320" class="center-line"/>
-      <line x1="-10" y1="160" x2="330" y2="160" class="center-line"/>
-      <!-- Diagonal centre lines through legs at 45° -->
-      <line x1="25" y1="25" x2="295" y2="295" class="center-line"/>
-      <line x1="295" y1="25" x2="25" y2="295" class="center-line"/>
+    <svg viewBox="-30 -40 380 380" width="520" height="520">
 
-      <!-- ═══ SEAT (outer circle) ═══ -->
-      <circle cx="160" cy="160" r="100" class="outline fill-seat" stroke-width="2"/>
-      <!-- Inner edge contour (rounding hint) -->
-      <circle cx="160" cy="160" r="96" fill="none" stroke="#ddd" stroke-width="0.5"/>
+      <!-- Center lines (principal axes) -->
+      <line x1="160" y1="-30" x2="160" y2="330" class="center-line"/>
+      <line x1="-20" y1="160" x2="340" y2="160" class="center-line"/>
+      <!-- Diagonal centre lines through leg positions at 45 degrees -->
+      <line x1="20" y1="20" x2="300" y2="300" class="center-line"/>
+      <line x1="300" y1="20" x2="20" y2="300" class="center-line"/>
 
-      <!-- ═══ LEG ATTACHMENT CIRCLE (hidden — underside) ═══ -->
-      <circle cx="160" cy="160" r="33" class="hidden-line"/>
+      <!-- SEAT (outer circle — diameter 70mm, radius ~105px at this scale) -->
+      <circle cx="160" cy="160" r="105" class="outline fill-seat" stroke-width="2"/>
+      <!-- Inner bevel hint -->
+      <circle cx="160" cy="160" r="101" fill="none" stroke="#ddd" stroke-width="0.5"/>
 
-      <!-- ═══ FOUR LEGS at 45° / 135° / 225° / 315° ═══ -->
-      <!-- Leg top circles (where they meet seat underside) -->
-      <!-- 45° → (160+33*cos45, 160-33*sin45) = (183.3, 136.7) -->
-      <circle cx="183.3" cy="136.7" r="7.5" class="outline fill-leg"/>
-      <!-- 135° → (136.7, 136.7) -->
-      <circle cx="136.7" cy="136.7" r="7.5" class="outline fill-leg"/>
-      <!-- 225° → (136.7, 183.3) -->
-      <circle cx="136.7" cy="183.3" r="7.5" class="outline fill-leg"/>
-      <!-- 315° → (183.3, 183.3) -->
-      <circle cx="183.3" cy="183.3" r="7.5" class="outline fill-leg"/>
+      <!-- LEG ATTACHMENT CIRCLE (hidden — underside, radius 24mm, ~36px) -->
+      <circle cx="160" cy="160" r="36" class="hidden-line"/>
 
-      <!-- ═══ FOOT SPREAD CIRCLE (hidden — floor level, bigger) ═══ -->
-      <circle cx="160" cy="160" r="105" class="hidden-line" stroke-dasharray="3,3" opacity="0.35"/>
+      <!-- FOUR LEGS at 45/135/225/315 degrees -->
+      <circle cx="185.5" cy="134.5" r="7.5" class="outline fill-leg"/>
+      <circle cx="134.5" cy="134.5" r="7.5" class="outline fill-leg"/>
+      <circle cx="134.5" cy="185.5" r="7.5" class="outline fill-leg"/>
+      <circle cx="185.5" cy="185.5" r="7.5" class="outline fill-leg"/>
 
-      <!-- ═══ STRETCHER RING (hidden — below seat) ═══ -->
-      <circle cx="160" cy="160" r="75" class="hidden-line" stroke-dasharray="6,3" opacity="0.4"/>
-      <text x="244" y="108" class="annotation" transform="rotate(45,244,108)">stretcher ring</text>
+      <!-- FOOT SPREAD CIRCLE (hidden — floor level, dia 74mm, radius ~111px) -->
+      <circle cx="160" cy="160" r="111" class="hidden-line" stroke-dasharray="3,3" opacity="0.3"/>
 
-      <!-- ═══════════ DIMENSION LINES ═══════════ -->
+      <!-- STRETCHER RING (hidden — below seat, dia 52mm, radius ~78px) -->
+      <circle cx="160" cy="160" r="78" class="hidden-line" stroke-dasharray="6,3" opacity="0.4"/>
+      <text x="248" y="104" class="annotation" transform="rotate(45,248,104)">stretcher ring</text>
 
-      <!-- seat_diameter (top) -->
-      <line x1="60" y1="68" x2="60" y2="42" class="ext-line"/>
-      <line x1="260" y1="68" x2="260" y2="42" class="ext-line"/>
-      <line x1="60" y1="48" x2="260" y2="48" class="dim-line"/>
-      <polygon points="60,48 66,45.5 66,50.5" class="dim-arrow"/>
-      <polygon points="260,48 254,45.5 254,50.5" class="dim-arrow"/>
-      <text x="118" y="42" class="dim-text">seat_diameter: 67mm</text>
+      <!-- DIMENSION LINES -->
 
-      <!-- leg_spread_radius (centre to leg) -->
-      <line x1="160" y1="160" x2="183.3" y2="136.7" class="dim-line"/>
-      <circle cx="160" cy="160" r="2" fill="#1565C0"/>
-      <text x="168" y="142" class="dim-text-sm">spread_r:</text>
-      <text x="168" y="151" class="dim-text-sm">22mm</text>
+      <!-- seat_diameter: 70mm (top horizontal) -->
+      <line x1="55" y1="62" x2="55" y2="36" class="ext-line"/>
+      <line x1="265" y1="62" x2="265" y2="36" class="ext-line"/>
+      <line x1="55" y1="42" x2="265" y2="42" class="dim-line"/>
+      <polygon points="55,42 62,39 62,45" class="dim-arrow"/>
+      <polygon points="265,42 258,39 258,45" class="dim-arrow"/>
+      <text x="116" y="36" class="dim-text">seat_diameter: 70mm</text>
 
-      <!-- 90° arc between two legs -->
-      <path d="M 183.3,136.7 A 33,33 0 0,1 183.3,183.3" fill="none" class="dim-line"/>
-      <text x="198" y="164" class="dim-text-sm">90&deg;</text>
+      <!-- leg_spread_radius: 24mm (centre to leg mount) -->
+      <line x1="160" y1="160" x2="185.5" y2="134.5" class="dim-line"/>
+      <circle cx="160" cy="160" r="2.5" fill="#1565C0"/>
+      <text x="170" y="140" class="dim-text-sm">spread_r:</text>
+      <text x="170" y="150" class="dim-text-sm">24mm</text>
 
-      <!-- leg_diameter callout -->
-      <line x1="142" y1="189" x2="108" y2="220" class="dim-line"/>
-      <text x="60" y="230" class="dim-text-sm">leg_diameter: 5mm</text>
+      <!-- 90 degree arc between adjacent legs -->
+      <path d="M 185.5,134.5 A 36,36 0 0,1 185.5,185.5" fill="none" class="dim-line"/>
+      <text x="200" y="164" class="dim-text-sm">90&deg;</text>
 
-      <!-- foot_spread_diameter (dashed circle annotation) -->
-      <line x1="265" y1="160" x2="290" y2="138" class="dim-line"/>
-      <text x="268" y="132" class="dim-text-sm">foot_spread</text>
-      <text x="268" y="122" class="dim-text-sm">&oslash;70mm</text>
+      <!-- leg_diameter: 5mm (callout to bottom-left leg) -->
+      <line x1="140" y1="191" x2="106" y2="224" class="dim-line"/>
+      <text x="56" y="236" class="dim-text-sm">leg_diameter: 5mm</text>
 
-      <!-- stretcher ring callout -->
-      <line x1="107" y1="214" x2="80" y2="240" class="dim-line"/>
-      <text x="36" y="252" class="dim-text-sm">stretcher_ring</text>
-      <text x="36" y="262" class="dim-text-sm">&oslash;50mm</text>
+      <!-- foot_spread_diameter: 74mm (dashed outer circle callout) -->
+      <line x1="271" y1="160" x2="298" y2="134" class="dim-line"/>
+      <text x="274" y="126" class="dim-text-sm">foot_spread</text>
+      <text x="274" y="116" class="dim-text-sm">&oslash;74mm</text>
+
+      <!-- stretcher_ring_diameter: 52mm (callout) -->
+      <line x1="108" y1="218" x2="78" y2="248" class="dim-line"/>
+      <text x="30" y="258" class="dim-text-sm">stretcher_ring</text>
+      <text x="30" y="268" class="dim-text-sm">&oslash;52mm</text>
 
       <!-- Legend note -->
-      <text x="160" y="310" text-anchor="middle" class="annotation">Legs placed at 45&deg; to principal axes</text>
+      <text x="160" y="318" text-anchor="middle" class="annotation">Legs placed at 45&deg; to principal axes &mdash; evenly spaced</text>
     </svg>
   </div>
 
@@ -390,69 +374,71 @@
     <div class="view-label">Isometric View</div>
     <svg viewBox="-20 -20 360 400" width="520" height="580">
 
-      <!-- ═══ BACK LEGS (draw first, behind seat) ═══ -->
+      <!-- BACK LEGS (drawn first — behind seat) -->
       <!-- Back-left leg -->
-      <line x1="100" y1="48" x2="68" y2="268" stroke="#111" stroke-width="4.5" stroke-linecap="round" opacity="0.35" stroke-dasharray="7,3.5"/>
-      <line x1="100" y1="48" x2="68" y2="268" stroke="#d8d8d8" stroke-width="2.5" stroke-linecap="round" opacity="0.35"/>
+      <line x1="100" y1="48" x2="66" y2="270" stroke="#111" stroke-width="4.5" stroke-linecap="round" opacity="0.35" stroke-dasharray="7,3.5"/>
+      <line x1="100" y1="48" x2="66" y2="270" stroke="#d8d8d8" stroke-width="2.5" stroke-linecap="round" opacity="0.35"/>
       <!-- Back-right leg -->
-      <line x1="226" y1="42" x2="258" y2="262" stroke="#111" stroke-width="4.5" stroke-linecap="round" opacity="0.35" stroke-dasharray="7,3.5"/>
-      <line x1="226" y1="42" x2="258" y2="262" stroke="#d8d8d8" stroke-width="2.5" stroke-linecap="round" opacity="0.35"/>
+      <line x1="226" y1="42" x2="260" y2="264" stroke="#111" stroke-width="4.5" stroke-linecap="round" opacity="0.35" stroke-dasharray="7,3.5"/>
+      <line x1="226" y1="42" x2="260" y2="264" stroke="#d8d8d8" stroke-width="2.5" stroke-linecap="round" opacity="0.35"/>
 
       <!-- Back foot pads -->
-      <ellipse cx="68" cy="272" rx="10" ry="3.5" fill="#eee" stroke="#999" stroke-width="0.5"/>
-      <ellipse cx="258" cy="266" rx="10" ry="3.5" fill="#eee" stroke="#999" stroke-width="0.5"/>
+      <ellipse cx="66" cy="274" rx="10" ry="3.5" fill="#eee" stroke="#999" stroke-width="0.5"/>
+      <ellipse cx="260" cy="268" rx="10" ry="3.5" fill="#eee" stroke="#999" stroke-width="0.5"/>
 
       <!-- Back stretcher (behind seat) -->
-      <line x1="76" y1="198" x2="250" y2="192" stroke="#666" stroke-width="2" stroke-linecap="round" opacity="0.35" stroke-dasharray="5,3"/>
+      <line x1="74" y1="200" x2="252" y2="194" stroke="#666" stroke-width="2" stroke-linecap="round" opacity="0.35" stroke-dasharray="5,3"/>
 
-      <!-- ═══ SEAT ═══ -->
-      <!-- Seat thickness band -->
-      <path d="M 52,50 Q 52,68 160,95 Q 268,68 268,50"
+      <!-- SEAT -->
+      <!-- Seat thickness band (side face) -->
+      <path d="M 48,52 Q 48,72 160,98 Q 272,72 272,52"
             fill="#ddd" stroke="#111" stroke-width="1"/>
       <!-- Seat top surface -->
-      <ellipse cx="160" cy="50" rx="108" ry="42" fill="#f0f0f0" stroke="#111" stroke-width="1.8"/>
-      <!-- Inner highlight -->
-      <ellipse cx="160" cy="49" rx="102" ry="39" fill="none" stroke="#e0e0e0" stroke-width="0.5"/>
+      <ellipse cx="160" cy="52" rx="112" ry="44" fill="#f0f0f0" stroke="#111" stroke-width="1.8"/>
+      <!-- Inner highlight ring -->
+      <ellipse cx="160" cy="51" rx="106" ry="40" fill="none" stroke="#e0e0e0" stroke-width="0.5"/>
 
-      <!-- ═══ FRONT LEGS (in front of seat) ═══ -->
+      <!-- FRONT LEGS (in front of seat) -->
       <!-- Front-left leg -->
-      <line x1="110" y1="78" x2="78" y2="308" stroke="#111" stroke-width="5.5" stroke-linecap="round"/>
-      <line x1="110" y1="78" x2="78" y2="308" stroke="#d5d5d5" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="108" y1="80" x2="74" y2="312" stroke="#111" stroke-width="5.5" stroke-linecap="round"/>
+      <line x1="108" y1="80" x2="74" y2="312" stroke="#d5d5d5" stroke-width="3.5" stroke-linecap="round"/>
       <!-- Front-right leg -->
-      <line x1="214" y1="78" x2="246" y2="308" stroke="#111" stroke-width="5.5" stroke-linecap="round"/>
-      <line x1="214" y1="78" x2="246" y2="308" stroke="#d5d5d5" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="216" y1="80" x2="250" y2="312" stroke="#111" stroke-width="5.5" stroke-linecap="round"/>
+      <line x1="216" y1="80" x2="250" y2="312" stroke="#d5d5d5" stroke-width="3.5" stroke-linecap="round"/>
 
       <!-- Front foot pads -->
-      <ellipse cx="78" cy="312" rx="12" ry="4.5" fill="#e6e6e6" stroke="#111" stroke-width="0.8"/>
-      <ellipse cx="246" cy="312" rx="12" ry="4.5" fill="#e6e6e6" stroke="#111" stroke-width="0.8"/>
+      <ellipse cx="74" cy="316" rx="12" ry="4.5" fill="#e6e6e6" stroke="#111" stroke-width="0.8"/>
+      <ellipse cx="250" cy="316" rx="12" ry="4.5" fill="#e6e6e6" stroke="#111" stroke-width="0.8"/>
 
-      <!-- ═══ STRETCHERS (front, between front legs) ═══ -->
+      <!-- STRETCHERS -->
       <!-- Front stretcher bar -->
-      <line x1="90" y1="230" x2="236" y2="230" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
-      <line x1="90" y1="230" x2="236" y2="230" stroke="#d0d0d0" stroke-width="1.2" stroke-linecap="round"/>
-
+      <line x1="86" y1="234" x2="238" y2="234" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="86" y1="234" x2="238" y2="234" stroke="#d0d0d0" stroke-width="1.2" stroke-linecap="round"/>
       <!-- Side stretcher bars (connecting front to back) -->
-      <line x1="90" y1="230" x2="76" y2="198" stroke="#111" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
-      <line x1="236" y1="230" x2="250" y2="192" stroke="#111" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+      <line x1="86" y1="234" x2="74" y2="200" stroke="#111" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+      <line x1="238" y1="234" x2="252" y2="194" stroke="#111" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
 
-      <!-- ═══ CALLOUT LABELS ═══ -->
-      <line x1="200" y1="36" x2="268" y2="10" class="dim-line"/>
-      <text x="271" y="8" class="dim-text-sm">Seat &oslash;67mm</text>
+      <!-- CALLOUT LABELS -->
+      <line x1="202" y1="36" x2="272" y2="8" class="dim-line"/>
+      <text x="276" y="6" class="dim-text-sm">Seat &oslash;70mm</text>
 
-      <line x1="160" y1="68" x2="160" y2="82" class="dim-line"/>
-      <text x="165" y="90" class="dim-text-sm">t = 6mm</text>
+      <line x1="160" y1="70" x2="160" y2="86" class="dim-line"/>
+      <text x="168" y="92" class="dim-text-sm">t = 6mm</text>
 
-      <line x1="248" y1="200" x2="290" y2="186" class="dim-line"/>
-      <text x="293" y="184" class="dim-text-sm">Leg &oslash;5mm</text>
+      <line x1="252" y1="200" x2="296" y2="186" class="dim-line"/>
+      <text x="300" y="184" class="dim-text-sm">Leg &oslash;5mm</text>
 
-      <line x1="248" y1="308" x2="292" y2="320" class="dim-line"/>
-      <text x="295" y="318" class="dim-text-sm">4 legs, 8&deg; splay</text>
+      <line x1="252" y1="312" x2="298" y2="324" class="dim-line"/>
+      <text x="302" y="322" class="dim-text-sm">4 legs, 8&deg; splay</text>
 
-      <line x1="163" y1="230" x2="180" y2="248" class="dim-line"/>
-      <text x="183" y="256" class="dim-text-sm">Stretcher &oslash;3mm</text>
+      <line x1="162" y1="234" x2="184" y2="252" class="dim-line"/>
+      <text x="188" y="260" class="dim-text-sm">Stretcher &oslash;3mm</text>
 
-      <!-- Title -->
-      <text x="160" y="356" text-anchor="middle" class="annotation" font-size="9">Isometric &mdash; Illustrative (not to scale)</text>
+      <line x1="80" y1="268" x2="30" y2="282" class="dim-line"/>
+      <text x="4" y="292" class="dim-text-sm">H = 100mm</text>
+
+      <!-- Caption -->
+      <text x="160" y="360" text-anchor="middle" class="annotation" font-size="9">Isometric &mdash; Illustrative (not to scale)</text>
     </svg>
   </div>
 
@@ -462,7 +448,7 @@
 <div class="title-block">
   <div>
     <span class="tb-label">Title</span><br/>
-    Classic Round Stool &mdash; Circular seat, four cylindrical splayed legs, cross-brace stretchers
+    Classic Round Stool &mdash; Circular seat, four cylindrical splayed legs, cross-brace stretcher ring
   </div>
   <div>
     <span class="tb-label">Units / Scale</span><br/>
@@ -471,7 +457,7 @@
   </div>
   <div>
     <span class="tb-label">Projection / Date</span><br/>
-    Third Angle&ensp;|&ensp;2026-02-14<br/>
+    Third Angle&ensp;|&ensp;2026-02-15<br/>
     <span style="font-size:8px;color:#999;">13 parametric dimensions</span>
   </div>
 </div>

@@ -1,4 +1,4 @@
-"""Planning + Coding agent orchestration using the Claude Agent SDK."""
+"""[DEPRECATED] Planning + Coding agent orchestration using the Claude Agent SDK."""
 
 from __future__ import annotations
 

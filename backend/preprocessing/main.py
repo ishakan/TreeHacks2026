@@ -82,13 +82,13 @@ def preprocess_image(image_path: str) -> dict:
     }
 
 if __name__ == "__main__":
-    img_path = str("images/zen_garden.jpg")
+    img_path = str("images/lego_pieces.jpg")
 
     # Run grounded-SAM segmentation + annotation
-    classes = ["tree", "house", "rock"]
+    classes = ["gears"]
     image = cv.imread(img_path)
     detections = grounded_sam.segment_image(image=image, classes=classes)
     annotated = grounded_sam.annotate_image(image=image, detections=detections, classes=classes)
-    annotated_path = "images/zen_garden_annotated.jpg"
+    annotated_path = "images/lego_pieces_annotated.jpg"
     cv.imwrite(annotated_path, annotated)
     print(f"annotated: {annotated_path}")
