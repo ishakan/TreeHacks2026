@@ -13,6 +13,7 @@ frontend/dist/
 # Generated files
 outputs/
 uploads/
+preprocessing/config/
 
 # Ruff cache
 .ruff_cache/
