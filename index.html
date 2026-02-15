@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>treehacks</title>
+    <style>
+      #boot-overlay {
+        position: fixed;
+        top: 0;
+        right: 0;
+        z-index: 99999;
+        background: rgba(0,0,0,0.95);
+        color: #0f0;
+        font-family: monospace;
+        font-size: 11px;
+        padding: 8px 12px;
+        max-width: 320px;
+        border-left: 2px solid #0f0;
+        border-bottom: 2px solid #0f0;
+        display: none;
+      }
+      #boot-overlay.visible { display: block; }
+      #boot-overlay .title { color: #fff; font-weight: bold; margin-bottom: 6px; }
+      #boot-overlay .status { margin: 2px 0; }
+      #boot-overlay .ok { color: #0f0; }
+      #boot-overlay .pending { color: #ff0; }
+      #boot-overlay .error { color: #f00; }
+      #boot-overlay .stall { color: #f00; font-weight: bold; animation: blink 0.5s infinite; }
+      @keyframes blink { 50% { opacity: 0.5; } }
+      #boot-overlay .err-box { background: #300; padding: 4px; margin-top: 6px; max-height: 120px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+      #boot-overlay button { margin: 2px; padding: 2px 6px; font-size: 10px; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <!-- Boot Status Overlay - renders BEFORE React -->
+    <div id="boot-overlay">
+      <div class="title">🔧 Boot Status</div>
+      <div id="boot-timestamp" class="status"></div>
+      <div id="boot-js" class="status pending">⏳ JS loading...</div>
+      <div id="boot-react-root" class="status pending">⏳ React root</div>
+      <div id="boot-app-render" class="status pending">⏳ App component</div>
+      <div id="boot-three" class="status pending">⏳ Three.js</div>
+      <div id="boot-sketch" class="status pending">⏳ Sketch store</div>
+      <div id="boot-solver" class="status pending">⏳ Solver</div>
+      <div id="boot-occt" class="status pending">⏳ OCCT/WASM</div>
+      <div id="boot-watchdog" class="status"></div>
+      <div id="boot-error" class="err-box" style="display:none"></div>
+      <div id="boot-controls" style="margin-top:6px">
+        <button id="btn-solver" onclick="window.__BOOT.toggleSolver()">Toggle Solver</button>
+        <button id="btn-occt" onclick="window.__BOOT.toggleOCCT()">Toggle OCCT</button>
+        <button onclick="window.__BOOT.hide()">Hide</button>
+      </div>
+    </div>
+
+    <script>
+      // Boot status tracker - runs IMMEDIATELY before any modules
+      (function() {
+        var overlay = document.getElementById('boot-overlay');
+        var startTime = Date.now();
+        var watchdogCounter = 0;
+        var lastWatchdog = Date.now();
+        var stallDetected = false;
+        
+        // Show overlay if DEBUG flag is set or ?debug in URL
+        // Default OFF in production, but auto-shows on error/stall
+        var showOverlay = localStorage.getItem('BOOT_DEBUG') === 'true' || 
+                          location.search.includes('debug');
+        
+        if (showOverlay) overlay.classList.add('visible');
+        
+        function elapsed() {
+          return ((Date.now() - startTime) / 1000).toFixed(2) + 's';
+        }
+        
+        function updateStatus(id, status, isOk, isError) {
+          var el = document.getElementById('boot-' + id);
+          if (!el) return;
+          var icon = isError ? '❌' : (isOk ? '✅' : '⏳');
+          el.textContent = icon + ' ' + status + ' [' + elapsed() + ']';
+          el.className = 'status ' + (isError ? 'error' : (isOk ? 'ok' : 'pending'));
+        }
+        
+        function showError(msg, stack) {
+          var errBox = document.getElementById('boot-error');
+          errBox.style.display = 'block';
+          errBox.textContent = msg + '\n' + (stack || '');
+          overlay.classList.add('visible');
+        }
+        
+        // Global boot tracker
+        window.__BOOT = {
+          startTime: startTime,
+          status: {},
+          mark: function(key, ok, error) {
+            this.status[key] = { ok: ok, error: error, time: Date.now() };
+            updateStatus(key, key + (error ? ': ' + error : ''), ok, !!error);
+          },
+          error: function(msg, stack) {
+            showError(msg, stack);
+          },
+          tick: function() {
+            watchdogCounter++;
+            lastWatchdog = Date.now();
+          },
+          hide: function() {
+            overlay.classList.remove('visible');
+          },
+          show: function() {
+            overlay.classList.add('visible');
+          },
+          toggleSolver: function() {
+            var disabled = localStorage.getItem('DISABLE_SOLVER') === 'true';
+            if (disabled) {
+              localStorage.removeItem('DISABLE_SOLVER');
+            } else {
+              localStorage.setItem('DISABLE_SOLVER', 'true');
+            }
+            location.reload();
+          },
+          toggleOCCT: function() {
+            var disabled = localStorage.getItem('DISABLE_OCCT') === 'true';
+            if (disabled) {
+              localStorage.removeItem('DISABLE_OCCT');
+            } else {
+              localStorage.setItem('DISABLE_OCCT', 'true');
+            }
+            location.reload();
+          },
+          isSolverDisabled: function() {
+            return localStorage.getItem('DISABLE_SOLVER') === 'true';
+          },
+          isOCCTDisabled: function() {
+            return localStorage.getItem('DISABLE_OCCT') === 'true';
+          }
+        };
+        
+        // Update button labels based on current state
+        var btnSolver = document.getElementById('btn-solver');
+        var btnOcct = document.getElementById('btn-occt');
+        if (window.__BOOT.isSolverDisabled()) {
+          btnSolver.textContent = 'Enable Solver';
+          btnSolver.style.background = '#a00';
+        }
+        if (window.__BOOT.isOCCTDisabled()) {
+          btnOcct.textContent = 'Enable OCCT';
+          btnOcct.style.background = '#a00';
+        }
+        
+        // Update timestamp
+        document.getElementById('boot-timestamp').textContent = 
+          '🕐 Started: ' + new Date().toISOString().substr(11, 8);
+        
+        // Watchdog: detect main thread stalls
+        var watchdogInterval = setInterval(function() {
+          var now = Date.now();
+          if (now - lastWatchdog > 2000 && !stallDetected) {
+            stallDetected = true;
+            var el = document.getElementById('boot-watchdog');
+            el.textContent = '🚨 MAIN THREAD STALLED!';
+            el.className = 'status stall';
+            overlay.classList.add('visible');
+          }
+          window.__BOOT.tick();
+        }, 250);
+        
+        // Global error handlers
+        window.onerror = function(msg, url, line, col, error) {
+          showError('ERROR: ' + msg, (error && error.stack) || (url + ':' + line));
+          return false;
+        };
+        
+        window.onunhandledrejection = function(event) {
+          var reason = event.reason;
+          var msg = reason ? (reason.message || String(reason)) : 'Unhandled Promise rejection';
+          var stack = reason && reason.stack;
+          showError('PROMISE REJECTION: ' + msg, stack);
+        };
+        
+        // Mark JS as loaded once this script runs
+        window.__BOOT.mark('js', true);
+      })();
+    </script>
+
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
