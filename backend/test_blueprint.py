@@ -2,7 +2,7 @@
 """Minimalistic terminal client for the Blueprint-to-OpenSCAD workflow.
 
 Usage:
-    1. Start the server:  cd backend && uvicorn blueprint_server:app --port 8002
+    1. Start the server:  python server.py   (from project root, port 8003)
 
     Interactive mode:
         python test_blueprint.py
@@ -25,7 +25,7 @@ from pathlib import Path
 
 import httpx
 
-BASE_URL = os.environ.get("BLUEPRINT_URL", "http://localhost:8002")
+BASE_URL = os.environ.get("BLUEPRINT_URL", "http://localhost:8003")
 SAVE_DIR = Path(__file__).resolve().parent / "test_sessions"
 SAVE_DIR.mkdir(exist_ok=True)
 
@@ -138,7 +138,7 @@ def fetch_and_save(session_id: str) -> tuple[Path, dict]:
         (d / "parameters.json").write_text(
             json.dumps(data["parameters"], indent=2)
         )
-        saved.append("parameters.json")
+        saved.append("paramers.json")
 
     if saved:
         print(f"  {DIM}Saved: {', '.join(saved)}{RESET}")

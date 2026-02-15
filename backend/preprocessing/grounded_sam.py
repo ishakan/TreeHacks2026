@@ -1,3 +1,5 @@
+import base64
+
 import cv2 as cv
 import numpy as np
 import supervision as sv
@@ -20,11 +22,19 @@ def segment_image(image, classes):
         class_id=np.array(result["class_id"]),
     )
 
+    # Masks: full-resolution boolean arrays (not rescaled)
     masks = np.array(result["masks"], dtype=bool)
     if masks.size > 0:
         detections.mask = masks
 
-    return detections
+    # Segments: cropped BGR images (white bg outside mask), decoded from base64 PNGs
+    segments = []
+    for seg_b64 in result["segments"]:
+        seg_bytes = base64.b64decode(seg_b64)
+        seg_arr = np.frombuffer(seg_bytes, dtype=np.uint8)
+        segments.append(cv.imdecode(seg_arr, cv.IMREAD_COLOR))
+
+    return detections, segments
 
 
 def annotate_image(image, detections, classes):
