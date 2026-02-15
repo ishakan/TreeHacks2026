@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 import uuid
 from pathlib import Path
 
@@ -45,7 +46,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-SESSIONS_DIR = Path(__file__).resolve().parent / "sessions"
+# Session directories MUST be outside the git tree. Claude Code resolves Write
+# tool paths relative to the git project root, so sessions inside the repo
+# cause files to land in the wrong place.
+SESSIONS_DIR = Path(tempfile.gettempdir()) / "blueprint-sessions"
 SESSIONS_DIR.mkdir(exist_ok=True)
 
 

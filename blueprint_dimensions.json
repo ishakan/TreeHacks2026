@@ -1,67 +1,13 @@
 {
-  "seat_diameter": {
-    "value": 70,
-    "unit": "mm",
-    "description": "Diameter of the circular seat top"
-  },
-  "seat_thickness": {
-    "value": 6,
-    "unit": "mm",
-    "description": "Thickness of the seat disc"
-  },
-  "overall_height": {
-    "value": 100,
-    "unit": "mm",
-    "description": "Total height from floor to top of seat"
-  },
-  "leg_length": {
-    "value": 94,
-    "unit": "mm",
-    "description": "Length of each leg from seat underside to floor"
-  },
-  "leg_diameter": {
-    "value": 5,
-    "unit": "mm",
-    "description": "Diameter of each cylindrical turned leg"
-  },
-  "leg_splay_angle": {
-    "value": 8,
-    "unit": "degrees",
-    "description": "Outward splay angle of each leg from vertical"
-  },
-  "leg_spread_radius": {
-    "value": 24,
-    "unit": "mm",
-    "description": "Radius of the circle on which leg centres are mounted on seat underside"
-  },
-  "foot_spread_diameter": {
-    "value": 74,
-    "unit": "mm",
-    "description": "Diameter of the circle formed by the four leg tips at floor level"
-  },
-  "seat_edge_radius": {
-    "value": 2,
-    "unit": "mm",
-    "description": "Rounding radius on the top edge of the seat"
-  },
-  "leg_count": {
-    "value": 4,
-    "unit": "count",
-    "description": "Number of legs, evenly spaced at 90-degree intervals"
-  },
-  "stretcher_height": {
-    "value": 30,
-    "unit": "mm",
-    "description": "Height of the cross-brace stretcher ring from the floor"
-  },
-  "stretcher_diameter": {
-    "value": 3,
-    "unit": "mm",
-    "description": "Diameter of each stretcher rod"
-  },
-  "stretcher_ring_diameter": {
-    "value": 52,
-    "unit": "mm",
-    "description": "Diameter of the stretcher ring connecting the four legs"
-  }
+  "seat_diameter": {"value": 100, "unit": "mm", "description": "Diameter of the round seat top"},
+  "seat_radius": {"value": 50, "unit": "mm", "description": "Radius of the round seat top"},
+  "seat_thickness": {"value": 8, "unit": "mm", "description": "Thickness of the seat disc"},
+  "overall_height": {"value": 95, "unit": "mm", "description": "Total height from floor to top of seat"},
+  "leg_height": {"value": 87, "unit": "mm", "description": "Height of each leg (floor to underside of seat)"},
+  "leg_diameter": {"value": 7, "unit": "mm", "description": "Diameter of each cylindrical leg"},
+  "leg_radius": {"value": 3.5, "unit": "mm", "description": "Radius of each cylindrical leg"},
+  "leg_spread_radius": {"value": 35, "unit": "mm", "description": "Radial distance from center to each leg center on seat underside"},
+  "leg_splay_angle": {"value": 5, "unit": "deg", "description": "Outward splay angle of each leg from vertical"},
+  "foot_spread_radius": {"value": 42.6, "unit": "mm", "description": "Radial distance from center to each leg center at floor level"},
+  "leg_spacing_angle": {"value": 90, "unit": "deg", "description": "Angular spacing between adjacent legs (4 legs at 90° apart)"}
 }

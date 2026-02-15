@@ -117,20 +117,37 @@ class GroundedSAM:
 
         # Segment with SAM
         self.sam_predictor.set_image(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-        result_masks = []
+        cropped_masks = []
         for box in detections.xyxy:
             masks, scores, _ = self.sam_predictor.predict(
                 box=box, multimask_output=True
             )
-            result_masks.append(masks[np.argmax(scores)])
+            best_mask = masks[np.argmax(scores)]
 
-        masks_array = np.array(result_masks) if result_masks else np.empty((0, image.shape[0], image.shape[1]), dtype=bool)
+            # Crop mask to bounding box
+            x1, y1, x2, y2 = map(int, box)
+            cropped_masks.append(best_mask[y1:y2, x1:x2].tolist())
+
+        # Draw bounding boxes and labels on the image
+        annotated = image.copy()
+        for i, box in enumerate(detections.xyxy):
+            x1, y1, x2, y2 = map(int, box)
+            cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            class_id = detections.class_id[i]
+            label = classes[class_id] if class_id < len(classes) else str(class_id)
+            conf = detections.confidence[i]
+            cv2.putText(annotated, f"{label} {conf:.2f}", (x1, y1 - 8),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
+        _, annotated_png = cv2.imencode(".png", annotated)
+        annotated_b64 = base64.b64encode(annotated_png.tobytes()).decode()
 
         return {
+            "annotated_image_b64": annotated_b64,
             "xyxy": detections.xyxy.tolist(),
             "confidence": detections.confidence.tolist(),
             "class_id": detections.class_id.tolist(),
-            "masks": masks_array.tolist(),
+            "masks": cropped_masks,
         }
 
     @modal.fastapi_endpoint(method="POST")
