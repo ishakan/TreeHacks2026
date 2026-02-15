@@ -2,8 +2,15 @@
 """Minimalistic terminal client for the Blueprint-to-OpenSCAD workflow.
 
 Usage:
-    1. Start the server:  cd backend && uvicorn blueprint_server:app --port 8001
-    2. Run this script:   python test_blueprint.py
+    1. Start the server:  cd backend && uvicorn blueprint_server:app --port 8002
+
+    Interactive mode:
+        python test_blueprint.py
+
+    Standalone tests:
+        python test_blueprint.py blueprint "a coffee mug with a handle"
+        python test_blueprint.py coding <session_id>
+        python test_blueprint.py e2e "a coffee mug with a handle"
 
 Dialogue sessions are saved to  backend/test_sessions/<session_id>/
 """
@@ -18,7 +25,7 @@ from pathlib import Path
 
 import httpx
 
-BASE_URL = os.environ.get("BLUEPRINT_URL", "http://localhost:8001")
+BASE_URL = os.environ.get("BLUEPRINT_URL", "http://localhost:8002")
 SAVE_DIR = Path(__file__).resolve().parent / "test_sessions"
 SAVE_DIR.mkdir(exist_ok=True)
 
@@ -169,6 +176,132 @@ def print_params(params: dict) -> None:
         v = info.get("value", "?")
         desc = info.get("description", "")
         print(f"  {YELLOW}{name}{RESET} = {v}  {DIM}({desc}){RESET}")
+
+
+# ---------------------------------------------------------------------------
+# Standalone test: blueprint agent
+# ---------------------------------------------------------------------------
+
+def run_blueprint_test(description: str) -> str | None:
+    """Run the blueprint agent end-to-end and return the session ID (or None on failure)."""
+    print(f"\n{BOLD}=== Blueprint Agent Test ==={RESET}")
+    print(f"  Description: {description}\n")
+
+    result = stream_sse("POST", "/api/blueprint/generate", {"description": description})
+
+    if not result or not result.get("sessionId"):
+        print(f"{RED}No session returned.{RESET}")
+        return None
+
+    session_id = result["sessionId"]
+
+    try:
+        d, data = fetch_and_save(session_id)
+    except Exception as exc:
+        print(f"{RED}Failed to fetch/save session: {exc}{RESET}")
+        return session_id
+
+    print(f"\n{BOLD}Session:{RESET}  {session_id}")
+    print(f"{BOLD}Saved to:{RESET} {d}")
+
+    # Verify expected outputs
+    html_ok = "html" in data and len(data["html"]) > 0
+    dims_ok = "dimensions" in data and len(data["dimensions"]) > 0
+    print(f"\n  blueprint.html          {'OK (' + str(len(data.get('html', ''))) + ' chars)' if html_ok else RED + 'MISSING' + RESET}")
+    print(f"  blueprint_dimensions.json {'OK (' + str(len(data.get('dimensions', {}))) + ' params)' if dims_ok else RED + 'MISSING' + RESET}")
+
+    if dims_ok:
+        print_dims(data["dimensions"])
+
+    return session_id
+
+
+# ---------------------------------------------------------------------------
+# Standalone test: coding agent
+# ---------------------------------------------------------------------------
+
+def run_coding_test(session_id: str) -> bool:
+    """Run the coding agent on an existing session and return True on success.
+
+    The coding agent reads three files:
+      1. blueprint.html          — the confirmed HTML blueprint
+      2. blueprint_dimensions.json — parametric dimensions from the blueprint
+      3. openscad_docs.json       — OpenSCAD language reference (from backend/)
+
+    It writes two files:
+      1. model.scad      — the generated OpenSCAD code
+      2. parameters.json  — structured parameter metadata
+    """
+    print(f"\n{BOLD}=== Coding Agent Test ==={RESET}")
+    print(f"  Session: {session_id}\n")
+
+    # --- verify input files exist on the server ---
+    print(f"{CYAN}Checking input files...{RESET}")
+    try:
+        resp = httpx.get(f"{BASE_URL}/api/blueprint/session/{session_id}", timeout=10)
+        resp.raise_for_status()
+        pre = resp.json()
+    except Exception as exc:
+        print(f"{RED}Cannot reach session: {exc}{RESET}")
+        return False
+
+    html_ok = "html" in pre and len(pre["html"]) > 0
+    dims_ok = "dimensions" in pre and len(pre["dimensions"]) > 0
+
+    print(f"  blueprint.html            {'OK (' + str(len(pre.get('html', ''))) + ' chars)' if html_ok else RED + 'MISSING' + RESET}")
+    print(f"  blueprint_dimensions.json {'OK (' + str(len(pre.get('dimensions', {}))) + ' params)' if dims_ok else RED + 'MISSING' + RESET}")
+    print(f"  openscad_docs.json        {DIM}(loaded by server from backend/){RESET}")
+
+    if not html_ok:
+        print(f"\n{RED}Cannot run coding agent — no blueprint.html in session.{RESET}")
+        return False
+
+    # --- run the coding agent ---
+    print(f"\n{CYAN}Running coding agent...{RESET}")
+    result = stream_sse("POST", "/api/blueprint/confirm", {"sessionId": session_id})
+
+    if not result:
+        print(f"{RED}Coding agent returned no result.{RESET}")
+        return False
+
+    # --- fetch & save outputs ---
+    try:
+        d, data = fetch_and_save(session_id)
+    except Exception as exc:
+        print(f"{RED}Failed to fetch/save session: {exc}{RESET}")
+        return False
+
+    scad_ok = "scadCode" in data and len(data["scadCode"]) > 0
+    params_ok = "parameters" in data and len(data["parameters"]) > 0
+
+    print(f"\n{BOLD}Results:{RESET}")
+    print(f"  model.scad      {'OK (' + str(len(data.get('scadCode', ''))) + ' chars)' if scad_ok else RED + 'MISSING' + RESET}")
+    print(f"  parameters.json {'OK (' + str(len(data.get('parameters', {}))) + ' params)' if params_ok else RED + 'MISSING' + RESET}")
+    print(f"{BOLD}Saved to:{RESET} {d}")
+
+    if params_ok:
+        print_params(data["parameters"])
+
+    if scad_ok:
+        preview = data["scadCode"][:300]
+        print(f"\n{DIM}--- model.scad preview ---{RESET}")
+        print(f"{DIM}{preview}{'...' if len(data['scadCode']) > 300 else ''}{RESET}")
+
+    return scad_ok
+
+
+# ---------------------------------------------------------------------------
+# Standalone test: end-to-end (blueprint → coding)
+# ---------------------------------------------------------------------------
+
+def run_e2e_test(description: str) -> bool:
+    """Run both agents back-to-back: blueprint then coding."""
+    session_id = run_blueprint_test(description)
+    if not session_id:
+        return False
+
+    print(f"\n{'─' * 60}\n")
+    return run_coding_test(session_id)
 
 
 # ---------------------------------------------------------------------------
@@ -350,4 +483,13 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) >= 3 and sys.argv[1] == "blueprint":
+        run_blueprint_test(" ".join(sys.argv[2:]))
+    elif len(sys.argv) == 3 and sys.argv[1] == "coding":
+        ok = run_coding_test(sys.argv[2])
+        sys.exit(0 if ok else 1)
+    elif len(sys.argv) >= 3 and sys.argv[1] == "e2e":
+        ok = run_e2e_test(" ".join(sys.argv[2:]))
+        sys.exit(0 if ok else 1)
+    else:
+        main()

@@ -115,18 +115,42 @@ class GroundedSAM:
         detections.confidence = detections.confidence[nms_idx]
         detections.class_id = detections.class_id[nms_idx]
 
-        # Segment with SAM
+        # Segment with SAM — apply mask to image and return RGBA crops
         self.sam_predictor.set_image(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-        cropped_masks = []
+        segment_b64s = []
         for box in detections.xyxy:
             masks, scores, _ = self.sam_predictor.predict(
                 box=box, multimask_output=True
             )
             best_mask = masks[np.argmax(scores)]
 
-            # Crop mask to bounding box
+            # Crop image to bounding box
             x1, y1, x2, y2 = map(int, box)
-            cropped_masks.append(best_mask[y1:y2, x1:x2].tolist())
+            box_h, box_w = y2 - y1, x2 - x1
+            cropped_img = image[y1:y2, x1:x2]
+
+            # Resize mask to fit within bbox, preserving aspect ratio
+            mask_h, mask_w = best_mask.shape[:2]
+            scale = min(box_w / mask_w, box_h / mask_h)
+            new_w = int(mask_w * scale)
+            new_h = int(mask_h * scale)
+            resized_mask = cv2.resize(
+                best_mask.astype(np.uint8), (new_w, new_h),
+                interpolation=cv2.INTER_NEAREST,
+            )
+
+            # Center resized mask on a bbox-sized canvas
+            canvas = np.zeros((box_h, box_w), dtype=np.uint8)
+            y_off = (box_h - new_h) // 2
+            x_off = (box_w - new_w) // 2
+            canvas[y_off:y_off + new_h, x_off:x_off + new_w] = resized_mask
+
+            # Apply mask → RGBA with transparent bg
+            rgba = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2BGRA)
+            rgba[:, :, 3] = canvas * 255
+
+            _, png_bytes = cv2.imencode(".png", rgba)
+            segment_b64s.append(base64.b64encode(png_bytes.tobytes()).decode())
 
         # Draw bounding boxes and labels on the image
         annotated = image.copy()
@@ -147,7 +171,7 @@ class GroundedSAM:
             "xyxy": detections.xyxy.tolist(),
             "confidence": detections.confidence.tolist(),
             "class_id": detections.class_id.tolist(),
-            "masks": cropped_masks,
+            "segments": segment_b64s,
         }
 
     @modal.fastapi_endpoint(method="POST")

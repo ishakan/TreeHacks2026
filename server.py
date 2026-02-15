@@ -85,34 +85,16 @@ async def segment_image(
         logger.error(f"Modal segmentation failed: {traceback.format_exc()}")
         raise HTTPException(502, f"Modal segmentation failed: {exc}")
 
-    masks = result.get("masks", [])
+    segment_b64s = result.get("segments", [])
     class_ids = result.get("class_id", [])
     annotated_image = result.get("annotated_image_b64", None)
 
-    if not masks:
+    if not segment_b64s:
         return {"segments": [], "classes": class_list}
 
-    # Decode original image
-    buf = np.frombuffer(image_bytes, dtype=np.uint8)
-    original = cv.imdecode(buf, cv.IMREAD_COLOR)
-
-    # Build individual masked PNGs (BGRA with transparent background)
+    # Pair pre-masked RGBA segments with labels
     segments = []
-    for i, mask in enumerate(masks):
-        mask_arr = np.array(mask, dtype=np.uint8)
-
-        # Resize mask to match original image if dimensions differ
-        h, w = original.shape[:2]
-        if mask_arr.shape != (h, w):
-            mask_arr = cv.resize(mask_arr, (w, h), interpolation=cv.INTER_NEAREST)
-
-        # Create BGRA image — transparent everywhere except the mask
-        rgba = cv.cvtColor(original, cv.COLOR_BGR2BGRA)
-        rgba[:, :, 3] = mask_arr * 255
-
-        _, png_bytes = cv.imencode(".png", rgba)
-        b64 = base64.b64encode(png_bytes.tobytes()).decode()
-
+    for i, b64 in enumerate(segment_b64s):
         label = (
             class_list[class_ids[i]]
             if i < len(class_ids) and class_ids[i] < len(class_list)
@@ -133,4 +115,4 @@ if dist_dir.is_dir():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=8002)
