@@ -38,8 +38,7 @@ const STLSliceViewer = forwardRef(function STLSliceViewer(
     // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true, stencil: true })
     renderer.localClippingEnabled = true
-    renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = 1.5
+    renderer.toneMapping = THREE.NoToneMapping
     renderer.outputColorSpace = THREE.SRGBColorSpace
     renderer.setPixelRatio(window.devicePixelRatio)
     renderer.setSize(container.clientWidth, container.clientHeight)

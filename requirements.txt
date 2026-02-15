@@ -9,4 +9,4 @@ python-dotenv
 trimesh
 google-generativeai
 anthropic
-fal-client
+replicate
