@@ -158,7 +158,7 @@ export default function NewAssetMenu() {
                   </span>
                 </span>
                 <span className="text-muted-foreground text-xs">
-                  Describe what you want to generate a 3D model from text.
+                  Create 3D models using natural language.
                 </span>
               </div>
             </div>

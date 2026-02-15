@@ -103,9 +103,8 @@ export default async function Home() {
               Revamped CAD for the AI era
             </h1>
             <p className="mt-6 max-w-[600px] text-lg leading-relaxed text-slate-300">
-              Voxal is the AI-native CAD studio that turns your imagination
-              into a 3D asset library. Generate, manage, and edit 3D models all
-              in one place.
+              Voxal is the AI-native CAD studio that turns your imagination into
+              assets. Generate, manage, and edit 3D models with the power of AI.
             </p>
 
             <div className="mt-9 flex flex-wrap items-center gap-3">
