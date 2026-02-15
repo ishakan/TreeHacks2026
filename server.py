@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sse_starlette.sse import EventSourceResponse
 from PIL import Image
-import cv2
+import cv2 as cv
 import httpx
 import io
 import json
@@ -87,24 +87,30 @@ async def segment_image(
 
     masks = result.get("masks", [])
     class_ids = result.get("class_id", [])
+    annotated_image = result.get("annotated_image_b64", None)
 
     if not masks:
         return {"segments": [], "classes": class_list}
 
     # Decode original image
     buf = np.frombuffer(image_bytes, dtype=np.uint8)
-    original = cv2.imdecode(buf, cv2.IMREAD_COLOR)
+    original = cv.imdecode(buf, cv.IMREAD_COLOR)
 
     # Build individual masked PNGs (BGRA with transparent background)
     segments = []
     for i, mask in enumerate(masks):
         mask_arr = np.array(mask, dtype=np.uint8)
 
+        # Resize mask to match original image if dimensions differ
+        h, w = original.shape[:2]
+        if mask_arr.shape != (h, w):
+            mask_arr = cv.resize(mask_arr, (w, h), interpolation=cv.INTER_NEAREST)
+
         # Create BGRA image — transparent everywhere except the mask
-        rgba = cv2.cvtColor(original, cv2.COLOR_BGR2BGRA)
+        rgba = cv.cvtColor(original, cv.COLOR_BGR2BGRA)
         rgba[:, :, 3] = mask_arr * 255
 
-        _, png_bytes = cv2.imencode(".png", rgba)
+        _, png_bytes = cv.imencode(".png", rgba)
         b64 = base64.b64encode(png_bytes.tobytes()).decode()
 
         label = (
@@ -114,7 +120,7 @@ async def segment_image(
         )
         segments.append({"image": b64, "label": label})
 
-    return {"segments": segments, "classes": class_list}
+    return {"annotated_image": annotated_image, "segments": segments, "classes": class_list}
 
 
 # ── Static files (production) ────────────────────────────────────────
