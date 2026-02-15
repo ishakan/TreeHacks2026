@@ -10,7 +10,7 @@
  */
 
 import { useRef, useEffect, useCallback, useState } from 'react'
-import { useThree, useFrame } from '@react-three/fiber'
+import { useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 
@@ -42,7 +42,7 @@ export function EnhancedCameraController({
   onControlsReady,
   pivotPoint = null, // Optional pivot point for rotation (e.g., selection center)
 }) {
-  const { camera, gl } = useThree()
+  const { camera, gl, invalidate } = useThree()
   const controlsRef = useRef()
   const animationRef = useRef(null)
   // Use ref instead of state to avoid re-renders during animation
@@ -73,6 +73,7 @@ export function EnhancedCameraController({
         prevPivotPointRef.current = pivotPoint.clone()
         controlsRef.current.target.set(pivotPoint.x, pivotPoint.y, pivotPoint.z)
         controlsRef.current.update()
+        invalidate()
       }
     } else if (!pivotPoint && prevPivotPointRef.current) {
       // Pivot was cleared
@@ -126,11 +127,13 @@ export function EnhancedCameraController({
       camera.lookAt(currentTarget.current)
 
       if (t < 1) {
+        invalidate()
         animationRef.current = requestAnimationFrame(animate)
       } else {
         // Use ref instead of setState to avoid re-renders
         isAnimatingRef.current = false
         animationRef.current = null
+        invalidate()
       }
     }
 
@@ -180,6 +183,7 @@ export function EnhancedCameraController({
   // Custom zoom-to-cursor enhancement (optional, only when Shift is held)
   const handleZoomToCursor = useCallback((event) => {
     if (!controlsRef.current || !enabled || isAnimatingRef.current) return
+    if (!controlsRef.current.enabled) return
     if (!event.shiftKey) return // Only activate with Shift key
 
     // Get mouse position in NDC
@@ -219,8 +223,9 @@ export function EnhancedCameraController({
       camera.position.copy(controlsRef.current.target).add(direction)
 
       controlsRef.current.update()
+      invalidate()
     }
-  }, [camera, gl, enabled])
+  }, [camera, gl, enabled, invalidate])
 
   // Optional: Add custom zoom-to-cursor when Shift is held
   useEffect(() => {
@@ -244,6 +249,7 @@ export function EnhancedCameraController({
   return (
     <OrbitControls
       ref={controlsRef}
+      makeDefault
       args={[camera, gl.domElement]}
       enableDamping
       dampingFactor={0.08}
@@ -255,6 +261,9 @@ export function EnhancedCameraController({
       rotateSpeed={0.8}
       panSpeed={0.8}
       target={targetState}
+      onChange={() => invalidate()}
+      onStart={() => invalidate()}
+      onEnd={() => invalidate()}
     />
   )
 }

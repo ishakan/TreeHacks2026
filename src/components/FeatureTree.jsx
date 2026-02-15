@@ -1,6 +1,12 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useFeatureTree } from '../context/FeatureTreeContext'
 import { FeatureStatus } from '../services/featureSystem'
+import { useWorkspace } from '../context/WorkspaceContext'
+import { useSelection, SelectionMode } from '../context/SelectionContext'
+import { useShapes } from '../context/ShapeContext'
+import { useSketch } from '../context/SketchContext'
+import { createEdgeSelectionRef } from '../services/selectionRef'
+import { createPrimitiveFeature, isPrimitiveFeatureType } from '../services/primitiveTools'
 
 /**
  * Feature Tree Component
@@ -15,6 +21,7 @@ import { FeatureStatus } from '../services/featureSystem'
 export default function FeatureTree() {
   const {
     features,
+    currentResult,
     rollbackIndex,
     isRegenerating,
     rebuildErrors,
@@ -31,16 +38,141 @@ export default function FeatureTree() {
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [draggedIndex, setDraggedIndex] = useState(null)
   const [dragOverIndex, setDragOverIndex] = useState(null)
+  const { selectedBodies, selectedEdges, selectionMode, setSelectionMode } = useSelection()
+  const { getBody } = useWorkspace()
+  const { shapes } = useShapes()
+  const {
+    selectedSketchId,
+    getSketchById,
+    getExtrudableProfileForSketch,
+  } = useSketch()
 
   const featureTypes = useMemo(() => getAvailableFeatureTypes(), [getAvailableFeatureTypes])
+  const selectedEdgeCount = useMemo(() => {
+    let count = 0
+    selectedEdges.forEach((edgeSet) => {
+      count += edgeSet.size
+    })
+    return count
+  }, [selectedEdges])
 
   // Handle adding a new feature
   const handleAddFeature = useCallback((type) => {
+    if (type === 'extrude') {
+      const sketchId = selectedSketchId
+      if (!sketchId) {
+        alert('Select a sketch first (Sketches tab or click sketch geometry) before creating an extrude.')
+        return
+      }
+      const profileResult = getExtrudableProfileForSketch(sketchId)
+      if (!profileResult.ok) {
+        alert(profileResult.error || 'Profile not closed. Create a closed loop before extruding.')
+        return
+      }
+      const sketch = getSketchById(sketchId) || profileResult.sketch
+      const extrudeCount = features.filter((entry) => entry.type === 'extrude').length + 1
+      addFeature('extrude', `Extrude ${extrudeCount}`, {
+        sketchId,
+        sketchName: sketch?.name || `Sketch ${sketchId}`,
+        plane: sketch?.plane || null,
+        profile: profileResult.profile,
+        wireKey: profileResult.wireKey || null,
+        regionId: profileResult.wireKey || null,
+        length: 10,
+        direction: 'normal',
+        operation: 'new',
+        targetBodyId: null,
+      }, [])
+      setShowAddMenu(false)
+      return
+    }
+
+    if (isPrimitiveFeatureType(type)) {
+      createPrimitiveFeature({
+        type,
+        features,
+        addFeature,
+      })
+      setShowAddMenu(false)
+      return
+    }
+
+    const selectedBody = selectedBodies.length > 0 ? getBody(selectedBodies[0]) : null
+    const solidOnlyTypes = new Set(['fillet', 'chamfer', 'shell', 'draft'])
+    if (selectedBody?.kind === 'mesh' && solidOnlyTypes.has(type)) {
+      alert('Convert mesh to solid to use this feature.')
+      return
+    }
+
+    const isEdgeDriven = type === 'fillet' || type === 'chamfer'
+    const selectedEdgeRefs = []
+    selectedEdges.forEach((edgeSet, shapeId) => {
+      edgeSet.forEach((edgeId) => {
+        selectedEdgeRefs.push({ shapeId, edgeId })
+      })
+    })
+
+    if (isEdgeDriven && selectionMode !== SelectionMode.EDGE) {
+      setSelectionMode(SelectionMode.EDGE)
+      alert('Fillet/Chamfer require edge selection. Switched to Edge mode; select edges and try again.')
+      return
+    }
+
+    if (isEdgeDriven && selectedEdgeRefs.length === 0) {
+      alert('Select one or more edges to create a fillet/chamfer feature.')
+      return
+    }
+
+    const topologyLookup = new Map()
+    if (currentResult?.topologyMap) {
+      topologyLookup.set('feature-result', currentResult.topologyMap)
+    }
+    shapes.forEach((shape) => {
+      if (shape?.id && shape?.topologyMap) {
+        topologyLookup.set(shape.id, shape.topologyMap)
+      }
+    })
+
+    const references = isEdgeDriven
+      ? selectedEdgeRefs
+        .map(({ shapeId, edgeId }) => {
+          const topologyMap = topologyLookup.get(shapeId)
+          const edgeData = topologyMap?.edges?.get?.(edgeId)
+          return createEdgeSelectionRef({
+            featureId: selectedFeatureId || null,
+            edgeId,
+            edgeData,
+          })
+        })
+        .filter(Boolean)
+      : []
+
+    if (isEdgeDriven && references.length === 0) {
+      alert('Selected edges have no stable topology metadata yet. Rebuild and try again.')
+      return
+    }
+
     const typeInfo = featureTypes.find(t => t.type === type)
     const name = `${typeInfo?.label || type} ${features.length + 1}`
-    addFeature(type, name)
+    const params = isEdgeDriven ? { allEdges: false } : {}
+    addFeature(type, name, params, references)
     setShowAddMenu(false)
-  }, [addFeature, featureTypes, features.length])
+  }, [
+    addFeature,
+    currentResult,
+    featureTypes,
+    features,
+    selectedFeatureId,
+    selectedBodies,
+    selectedEdges,
+    selectionMode,
+    setSelectionMode,
+    shapes,
+    getBody,
+    selectedSketchId,
+    getSketchById,
+    getExtrudableProfileForSketch,
+  ])
 
   // Drag and drop handlers
   const handleDragStart = useCallback((e, index) => {
@@ -75,6 +207,8 @@ export default function FeatureTree() {
     switch (feature.status) {
       case FeatureStatus.OK:
         return '✅'
+      case FeatureStatus.NEEDS_REPAIR:
+        return '🛠️'
       case FeatureStatus.ERROR:
         return '❌'
       case FeatureStatus.SUPPRESSED:
@@ -98,6 +232,7 @@ export default function FeatureTree() {
       case 'fillet': return '⭕'
       case 'chamfer': return '📐'
       case 'transform': return '🔄'
+      case 'extrude': return '⬆️'
       default: return '🔧'
     }
   }
@@ -124,16 +259,28 @@ export default function FeatureTree() {
       {showAddMenu && (
         <div className="px-2 py-2 border-b border-gray-700 bg-gray-750">
           <div className="text-xs text-gray-400 mb-2">Add Feature:</div>
+          <div className="text-[11px] text-gray-500 mb-2">
+            Edge selection: {selectedEdgeCount} {selectionMode === SelectionMode.EDGE ? '(valid)' : '(switch to Edge mode)'}
+          </div>
           <div className="grid grid-cols-2 gap-1">
-            {featureTypes.map(({ type, label }) => (
+            {featureTypes.map(({ type, label }) => {
+              const requiresEdge = type === 'fillet' || type === 'chamfer'
+              const disabled = requiresEdge && (selectionMode !== SelectionMode.EDGE || selectedEdgeCount === 0)
+              return (
               <button
                 key={type}
                 onClick={() => handleAddFeature(type)}
-                className="px-2 py-1 text-xs bg-gray-700 text-gray-200 rounded hover:bg-gray-600 transition-colors text-left"
+                disabled={disabled}
+                className={`px-2 py-1 text-xs rounded transition-colors text-left ${
+                  disabled
+                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                    : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                }`}
               >
                 {getFeatureIcon(type)} {label}
               </button>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
@@ -160,6 +307,25 @@ export default function FeatureTree() {
                 </span>
               )}
             </div>
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-[11px] text-gray-500">All</span>
+            <input
+              type="range"
+              min={0}
+              max={features.length}
+              value={rollbackIndex === -1 ? features.length : rollbackIndex + 1}
+              onChange={(e) => {
+                const numeric = Number(e.target.value)
+                if (numeric >= features.length) {
+                  rollbackTo(-1)
+                } else {
+                  rollbackTo(Math.max(0, numeric - 1))
+                }
+              }}
+              className="flex-1 accent-blue-500"
+            />
+            <span className="text-[11px] text-gray-500">0</span>
           </div>
         </div>
       )}
@@ -253,6 +419,7 @@ function FeatureItem({
       className={`
         group relative px-2 py-1.5 mx-1 rounded cursor-pointer transition-all
         ${isSelected ? 'bg-blue-600/30 border border-blue-500' : 'hover:bg-gray-700 border border-transparent'}
+        ${feature.status === FeatureStatus.NEEDS_REPAIR ? 'ring-1 ring-amber-500/60' : ''}
         ${isDragging ? 'opacity-50' : ''}
         ${isDragOver ? 'border-t-2 border-t-blue-400' : ''}
         ${isRolledBack ? 'opacity-40' : ''}
@@ -320,6 +487,11 @@ function FeatureItem({
       {error && (
         <div className="mt-1 text-xs text-red-400 pl-6">
           ⚠️ {error}
+        </div>
+      )}
+      {feature.status === FeatureStatus.NEEDS_REPAIR && Array.isArray(feature.needsRepair) && feature.needsRepair.length > 0 && (
+        <div className="mt-1 text-xs text-amber-300 pl-6">
+          Missing refs: {feature.needsRepair.length}
         </div>
       )}
 
@@ -438,6 +610,7 @@ export function FeatureEditor() {
         <span className="text-gray-400">Status: </span>
         <span className={
           feature.status === FeatureStatus.OK ? 'text-green-400' :
+          feature.status === FeatureStatus.NEEDS_REPAIR ? 'text-amber-300' :
           feature.status === FeatureStatus.ERROR ? 'text-red-400' :
           feature.status === FeatureStatus.SUPPRESSED ? 'text-gray-500' :
           'text-yellow-400'
@@ -445,6 +618,12 @@ export function FeatureEditor() {
           {feature.status}
         </span>
       </div>
+
+      {feature.status === FeatureStatus.NEEDS_REPAIR && Array.isArray(feature.needsRepair) && feature.needsRepair.length > 0 && (
+        <div className="text-xs text-amber-300 bg-amber-900/20 p-2 rounded">
+          Needs repair: {feature.needsRepair.length} missing reference{feature.needsRepair.length !== 1 ? 's' : ''}.
+        </div>
+      )}
 
       {feature.error && (
         <div className="text-xs text-red-400 bg-red-900/20 p-2 rounded">

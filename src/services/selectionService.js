@@ -152,11 +152,6 @@ export function getSelectionFromHit(hit, shapeId, topologyMap, selectionMode) {
       if (nearestEdge) {
         return { type: 'edge', id: nearestEdge.edgeId }
       }
-      // Fallback to face if no edge is near
-      const faceId = getFaceIdFromTriangle(hit.faceIndex, topologyMap)
-      if (faceId) {
-        return { type: 'face', id: faceId }
-      }
       break
     }
     
@@ -179,6 +174,9 @@ export function getSelectionFromHit(hit, shapeId, topologyMap, selectionMode) {
     
     case 'solid': {
       return { type: 'solid', id: shapeId }
+    }
+    case 'body': {
+      return { type: 'body', id: shapeId }
     }
     
     default:

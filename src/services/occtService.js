@@ -168,6 +168,55 @@ export function makeWireFromEdges(edges) {
 }
 
 /**
+ * Check wire closure using OCCT APIs available in OpenCascade.js bindings.
+ * Note: `wire.Closed()` is not available on JS wrapper objects.
+ */
+export function isWireClosed(wire) {
+  if (!wire) return false
+
+  const isClosedCandidates = [
+    oc?.BRep_Tool?.IsClosed,
+    oc?.BRep_Tool?.IsClosed_1,
+    oc?.BRep_Tool?.IsClosed_2,
+  ].filter((fn) => typeof fn === 'function')
+
+  for (const fn of isClosedCandidates) {
+    try {
+      const result = fn.call(oc.BRep_Tool, wire)
+      if (typeof result === 'boolean') return result
+      if (result && typeof result.valueOf === 'function') {
+        const boolValue = result.valueOf()
+        if (typeof boolValue === 'boolean') return boolValue
+      }
+    } catch (err) {
+      // Try fallback strategy below.
+    }
+  }
+
+  // Fallback: attempt to build a face from the wire.
+  // A planar face build succeeds only for a valid closed wire.
+  try {
+    const faceBuilder = new oc.BRepBuilderAPI_MakeFace_15(wire, true)
+    if (!faceBuilder.IsDone()) return false
+
+    const face = faceBuilder.Face()
+    if (!face || (typeof face.IsNull === 'function' && face.IsNull())) return false
+
+    try {
+      const analyzer = new oc.BRepCheck_Analyzer(face, false)
+      if (typeof analyzer.IsValid === 'function') {
+        return Boolean(analyzer.IsValid())
+      }
+    } catch (err) {
+      // If analyzer isn't available in this build, successful face creation is enough.
+    }
+    return true
+  } catch (err) {
+    return false
+  }
+}
+
+/**
  * Create a face from a wire (assumes planar wire)
  */
 export function makeFaceFromWire(wire) {
@@ -277,7 +326,7 @@ export function extrudeSketchEntities(entities, extrudeLength) {
     
     const wire = makeWireFromEdges(edges)
     
-    if (wire && wire.Closed()) {
+    if (wire && isWireClosed(wire)) {
       console.log(`${LOG_PREFIX}   ✓ Wire is closed`)
       const face = makeFaceFromWire(wire)
       if (face) {
@@ -339,10 +388,11 @@ export function shapeToGeometry(shape, linearDeflection = 0.1, angularDeflection
   let totalTriangles = 0
 
   // Topology mapping data structures
-  const faces = new Map() // faceId -> { triangleStart, triangleCount, area }
+  const faces = new Map() // faceId -> { triangleStart, triangleCount, area, surfaceType, bbox, adjacentFaces }
   const triangleToFace = [] // triangleIndex -> faceId
-  const edges = new Map() // edgeId -> { vertices, length }
+  const edges = new Map() // edgeId -> { vertices, length, curveType, adjacentFaces, bbox }
   const vertexMap = new Map() // vertexId -> { position }
+  const edgeAdjacencyMap = new Map() // edgeHash -> Set(faceId)
 
   // Iterate through all faces
   const faceExplorer = new oc.TopExp_Explorer_2(
@@ -362,10 +412,36 @@ export function shapeToGeometry(shape, linearDeflection = 0.1, angularDeflection
 
     const triangleStart = triangleIndex
     let faceArea = 0
+    let surfaceType = 'other'
+    const faceMin = [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY]
+    const faceMax = [Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY]
+
+    // Build adjacency data for this face via its edges
+    const faceEdgeExplorer = new oc.TopExp_Explorer_2(
+      face,
+      oc.TopAbs_ShapeEnum.TopAbs_EDGE,
+      oc.TopAbs_ShapeEnum.TopAbs_SHAPE
+    )
+    while (faceEdgeExplorer.More()) {
+      const edgeHash = faceEdgeExplorer.Current().HashCode(2147483647)
+      if (!edgeAdjacencyMap.has(edgeHash)) {
+        edgeAdjacencyMap.set(edgeHash, new Set())
+      }
+      edgeAdjacencyMap.get(edgeHash).add(faceId)
+      faceEdgeExplorer.Next()
+    }
 
     if (!triangulation.IsNull()) {
       const tri = triangulation.get()
       const transform = location.Transformation()
+      try {
+        const surfaceHandle = oc.BRep_Tool.Surface_2(face)
+        surfaceType = surfaceHandle?.IsNull?.()
+          ? 'other'
+          : (surfaceHandle.get()?.DynamicType?.()?.get?.()?.Name?.() || 'other')
+      } catch (e) {
+        surfaceType = 'other'
+      }
       
       // Check face orientation
       const orientation = face.Orientation_1()
@@ -376,7 +452,16 @@ export function shapeToGeometry(shape, linearDeflection = 0.1, angularDeflection
       for (let i = 1; i <= nbNodes; i++) {
         const node = tri.Node(i)
         const transformedNode = node.Transformed(transform)
-        vertices.push(transformedNode.X(), transformedNode.Y(), transformedNode.Z())
+        const x = transformedNode.X()
+        const y = transformedNode.Y()
+        const z = transformedNode.Z()
+        faceMin[0] = Math.min(faceMin[0], x)
+        faceMin[1] = Math.min(faceMin[1], y)
+        faceMin[2] = Math.min(faceMin[2], z)
+        faceMax[0] = Math.max(faceMax[0], x)
+        faceMax[1] = Math.max(faceMax[1], y)
+        faceMax[2] = Math.max(faceMax[2], z)
+        vertices.push(x, y, z)
       }
 
       // Get triangles and calculate face area
@@ -419,6 +504,9 @@ export function shapeToGeometry(shape, linearDeflection = 0.1, angularDeflection
       triangleStart,
       triangleCount: triangleIndex - triangleStart,
       area: faceArea,
+      surfaceType,
+      bbox: Number.isFinite(faceMin[0]) ? { min: faceMin, max: faceMax } : null,
+      adjacentFaces: [],
     })
 
     faceCount++
@@ -435,6 +523,7 @@ export function shapeToGeometry(shape, linearDeflection = 0.1, angularDeflection
 
   while (edgeExplorer.More()) {
     const edgeId = `edge-${edgeCount}`
+    const edgeHash = edgeExplorer.Current().HashCode(2147483647)
     const edge = oc.TopoDS.Edge_1(edgeExplorer.Current())
     
     try {
@@ -450,8 +539,13 @@ export function shapeToGeometry(shape, linearDeflection = 0.1, angularDeflection
       
       if (!curve.IsNull()) {
         const curveHandle = curve.get()
+        const curveType = curveHandle.DynamicType?.()?.get?.()?.Name?.() || 'other'
         const p1 = curveHandle.Value(firstParam)
         const p2 = curveHandle.Value(lastParam)
+        const bbox = {
+          min: [Math.min(p1.X(), p2.X()), Math.min(p1.Y(), p2.Y()), Math.min(p1.Z(), p2.Z())],
+          max: [Math.max(p1.X(), p2.X()), Math.max(p1.Y(), p2.Y()), Math.max(p1.Z(), p2.Z())],
+        }
         
         edges.set(edgeId, {
           vertices: [
@@ -459,18 +553,48 @@ export function shapeToGeometry(shape, linearDeflection = 0.1, angularDeflection
             { x: p2.X(), y: p2.Y(), z: p2.Z() },
           ],
           length,
+          curveType,
+          bbox,
+          adjacentFaces: Array.from(edgeAdjacencyMap.get(edgeHash) || []),
         })
       } else {
-        edges.set(edgeId, { vertices: [], length })
+        edges.set(edgeId, {
+          vertices: [],
+          length,
+          curveType: 'other',
+          bbox: null,
+          adjacentFaces: Array.from(edgeAdjacencyMap.get(edgeHash) || []),
+        })
       }
     } catch (e) {
       // Some edges may not have simple curve representation
-      edges.set(edgeId, { vertices: [], length: 0 })
+      edges.set(edgeId, {
+        vertices: [],
+        length: 0,
+        curveType: 'other',
+        bbox: null,
+        adjacentFaces: Array.from(edgeAdjacencyMap.get(edgeHash) || []),
+      })
     }
     
     edgeCount++
     edgeExplorer.Next()
   }
+
+  // Populate face-to-face adjacency via shared edges
+  edgeAdjacencyMap.forEach((faceIdsSet) => {
+    const faceIds = Array.from(faceIdsSet)
+    for (let i = 0; i < faceIds.length; i += 1) {
+      const source = faces.get(faceIds[i])
+      if (!source) continue
+      const nextAdj = new Set(source.adjacentFaces || [])
+      for (let j = 0; j < faceIds.length; j += 1) {
+        if (i === j) continue
+        nextAdj.add(faceIds[j])
+      }
+      source.adjacentFaces = Array.from(nextAdj)
+    }
+  })
 
   // Extract vertices from the shape
   let vertexCount = 0

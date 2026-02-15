@@ -97,6 +97,8 @@ export function ShapeProvider({ children }) {
         id: `shape-${Date.now()}`,
         name: definition.name || `${definition.type} ${shapes.length + 1}`,
         type: definition.type,
+        occtShape,
+        shapeRefId: `shape-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         params: definition.params,
         color: definition.color || 0x4a90d9,
         position: definition.position || { x: 0, y: 0, z: 0 },
@@ -143,14 +145,14 @@ export function ShapeProvider({ children }) {
   }, [])
 
   // Add an extruded shape (from sketch extrusion)
-  const addExtrudedShape = useCallback((geometry, topologyMap, extrudeLength) => {
+  const addExtrudedShape = useCallback((geometry, topologyMap, extrudeLength, metadata = {}) => {
     console.log(`${LOG_PREFIX} addExtrudedShape() - length: ${extrudeLength}`)
     
     const newShape = {
       id: `extrude-${Date.now()}`,
       name: `Extrusion ${shapes.length + 1}`,
       type: 'extrusion',
-      params: { length: extrudeLength },
+      params: { length: extrudeLength, sketchId: metadata.sketchId || null },
       color: 0x6b5b95,
       position: { x: 0, y: 0, z: 0 },
       geometry,

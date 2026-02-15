@@ -8,16 +8,17 @@
  */
 
 import { useRef } from 'react'
-import { useImports, createImportedAsset, AssetStatus, AssetType } from '../context/ImportsContext'
+import { useWorkspace } from '../context/WorkspaceContext'
 import { importSTL } from '../importers/importSTL'
 import { importGLB } from '../importers/importGLB'
+import ToolbarIcon from './ui/ToolbarIcon'
 
 const MAX_FILE_SIZE = 200 * 1024 * 1024 // 200MB
 const ALLOWED_EXTENSIONS = ['.stl', '.glb', '.gltf']
 
 export default function ImportButton() {
   const fileInputRef = useRef(null)
-  const { addAsset, updateAssetStatus, registerObject } = useImports()
+  const { addMeshBody } = useWorkspace()
 
   const handleClick = () => {
     fileInputRef.current?.click()
@@ -52,16 +53,11 @@ export default function ImportButton() {
       return
     }
 
-    // Determine type
-    const type = extension === '.stl' ? AssetType.STL : AssetType.GLB
-
-    // Create asset metadata
-    const asset = createImportedAsset(file, type)
-    addAsset(asset)
+    const sourceType = extension === '.stl' ? 'stl' : 'glb'
 
     // Import based on type
     try {
-      if (type === AssetType.STL) {
+      if (sourceType === 'stl') {
         const result = await importSTL(file, {
           units: 'mm',
           autoCenter: true,
@@ -69,17 +65,23 @@ export default function ImportButton() {
           weldVertices: false,
         })
 
-        // Update asset with results
-        asset.bbox = result.bbox
-        asset.stats = result.stats
-        asset.status = AssetStatus.READY
+        addMeshBody({
+          name: file.name.replace(/\.[^/.]+$/, ''),
+          mesh: {
+            sourceType,
+            stats: result.stats,
+          },
+          object3D: result.object,
+          status: 'ready',
+          visible: true,
+          transform: {
+            position: [0, 0, 0],
+            rotation: [0, 0, 0],
+            scale: [1, 1, 1],
+          },
+        })
 
-        // Register object
-        registerObject(asset.id, result.object)
-
-        updateAssetStatus(asset.id, AssetStatus.READY)
-
-        console.log('[Import] STL loaded successfully:', asset.name, result)
+        console.log('[Import] STL loaded successfully:', file.name, result)
       } else {
         const result = await importGLB(file, {
           units: 'm',
@@ -88,22 +90,27 @@ export default function ImportButton() {
           convertToSingleMesh: false,
         })
 
-        // Update asset with results
-        asset.bbox = result.bbox
-        asset.stats = result.stats
-        asset.materials = result.materials
-        asset.status = AssetStatus.READY
+        addMeshBody({
+          name: file.name.replace(/\.[^/.]+$/, ''),
+          mesh: {
+            sourceType,
+            stats: result.stats,
+          },
+          object3D: result.object,
+          status: 'ready',
+          visible: true,
+          transform: {
+            position: [0, 0, 0],
+            rotation: [0, 0, 0],
+            scale: [1, 1, 1],
+          },
+        })
 
-        // Register object
-        registerObject(asset.id, result.object)
-
-        updateAssetStatus(asset.id, AssetStatus.READY)
-
-        console.log('[Import] GLB loaded successfully:', asset.name, result)
+        console.log('[Import] GLB loaded successfully:', file.name, result)
       }
     } catch (error) {
       console.error('[Import] Failed to load file:', error)
-      updateAssetStatus(asset.id, AssetStatus.ERROR, error.message)
+      alert(`Import failed for ${file.name}: ${error?.message || error}`)
     }
   }
 
@@ -111,10 +118,11 @@ export default function ImportButton() {
     <>
       <button
         onClick={handleClick}
-        className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-500 transition-colors"
+        className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-500 transition-colors inline-flex items-center gap-1.5"
         title="Import STL/GLB files"
       >
-        📥 Import
+        <ToolbarIcon name="import" />
+        Import
       </button>
 
       <input

@@ -9,18 +9,22 @@
  */
 
 import { useState } from 'react'
-import { useImports } from '../context/ImportsContext'
-import { AssetStatus } from '../context/ImportsContext'
+import { useWorkspace } from '../context/WorkspaceContext'
+import { useSelection } from '../context/SelectionContext'
 
 export default function ImportsPanel() {
   const {
-    assets,
-    selectedAssetId,
-    selectAsset,
-    toggleAssetVisibility,
-    renameAsset,
-    removeAsset,
-  } = useImports()
+    bodies,
+    activeBodyId,
+    selectBody,
+    setBodyVisibility,
+    renameBody,
+    removeBody,
+    convertMeshBodyToSolid,
+  } = useWorkspace()
+  const { selectBody: selectBodyInSelection } = useSelection()
+
+  const assets = bodies.filter((body) => body.kind === 'mesh')
 
   if (assets.length === 0) {
     return (
@@ -54,11 +58,22 @@ export default function ImportsPanel() {
             <AssetItem
               key={asset.id}
               asset={asset}
-              isSelected={asset.id === selectedAssetId}
-              onSelect={() => selectAsset(asset.id)}
-              onToggleVisibility={() => toggleAssetVisibility(asset.id)}
-              onRename={(newName) => renameAsset(asset.id, newName)}
-              onRemove={() => removeAsset(asset.id)}
+              isSelected={asset.id === activeBodyId}
+              onSelect={() => {
+                selectBody(asset.id)
+                selectBodyInSelection(asset.id, false)
+              }}
+              onToggleVisibility={() => setBodyVisibility(asset.id, !asset.visible)}
+              onRename={(newName) => renameBody(asset.id, newName)}
+              onRemove={() => removeBody(asset.id)}
+              onConvertToSolid={() => {
+                const result = convertMeshBodyToSolid(asset.id)
+                if (!result.ok) {
+                  alert(`Conversion failed: ${result.error}`)
+                } else if (result.warning) {
+                  alert(`Conversion succeeded. Warning: ${result.warning}`)
+                }
+              }}
             />
           ))}
         </div>
@@ -67,7 +82,7 @@ export default function ImportsPanel() {
   )
 }
 
-function AssetItem({ asset, isSelected, onSelect, onToggleVisibility, onRename, onRemove }) {
+function AssetItem({ asset, isSelected, onSelect, onToggleVisibility, onRename, onRemove, onConvertToSolid }) {
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState(asset.name)
   const [showContextMenu, setShowContextMenu] = useState(false)
@@ -80,7 +95,7 @@ function AssetItem({ asset, isSelected, onSelect, onToggleVisibility, onRename, 
   }
 
   const getTypeIcon = () => {
-    switch (asset.type) {
+    switch (asset.mesh?.sourceType) {
       case 'stl': return '📦'
       case 'glb': return '🎨'
       case 'gltf': return '🎨'
@@ -90,11 +105,11 @@ function AssetItem({ asset, isSelected, onSelect, onToggleVisibility, onRename, 
 
   const getStatusIcon = () => {
     switch (asset.status) {
-      case AssetStatus.LOADING:
+      case 'loading':
         return <span className="text-yellow-400 animate-pulse">⏳</span>
-      case AssetStatus.ERROR:
+      case 'error':
         return <span className="text-red-400">❌</span>
-      case AssetStatus.READY:
+      case 'ready':
         return <span className="text-green-400">✓</span>
       default:
         return null
@@ -181,10 +196,10 @@ function AssetItem({ asset, isSelected, onSelect, onToggleVisibility, onRename, 
       </div>
 
       {/* Stats */}
-      {asset.stats && asset.status === AssetStatus.READY && (
+      {asset.mesh?.stats && asset.status === 'ready' && (
         <div className="mt-1 text-xs text-gray-500 pl-6">
-          {asset.stats.meshes > 0 && `${asset.stats.meshes} mesh${asset.stats.meshes !== 1 ? 'es' : ''}, `}
-          {asset.stats.triangles > 0 && `${asset.stats.triangles.toLocaleString()} tris`}
+          {asset.mesh.stats.meshes > 0 && `${asset.mesh.stats.meshes} mesh${asset.mesh.stats.meshes !== 1 ? 'es' : ''}, `}
+          {asset.mesh.stats.triangles > 0 && `${asset.mesh.stats.triangles.toLocaleString()} tris`}
         </div>
       )}
 
@@ -210,6 +225,16 @@ function AssetItem({ asset, isSelected, onSelect, onToggleVisibility, onRename, 
             className="block w-full px-3 py-1.5 text-xs text-left hover:bg-gray-700"
           >
             Rename
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onConvertToSolid()
+              setShowContextMenu(false)
+            }}
+            className="block w-full px-3 py-1.5 text-xs text-left hover:bg-gray-700"
+          >
+            Convert Mesh to Solid
           </button>
           <button
             onClick={(e) => {

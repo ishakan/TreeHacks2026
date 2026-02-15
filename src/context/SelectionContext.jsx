@@ -9,6 +9,7 @@ export const SelectionMode = {
   EDGE: 'edge',
   VERTEX: 'vertex',
   SOLID: 'solid',
+  BODY: 'body',
 }
 
 export function SelectionProvider({ children }) {
@@ -20,6 +21,7 @@ export function SelectionProvider({ children }) {
   const [selectedEdges, setSelectedEdges] = useState(new Map())
   const [selectedVertices, setSelectedVertices] = useState(new Map())
   const [selectedSolids, setSelectedSolids] = useState(new Set())
+  const [selectedBodies, setSelectedBodies] = useState([])
   
   // Hover state for preselection highlighting
   const [hoveredItem, setHoveredItem] = useState(null) // { shapeId, type, topologyId }
@@ -31,8 +33,9 @@ export function SelectionProvider({ children }) {
     selectedEdges.forEach(set => count += set.size)
     selectedVertices.forEach(set => count += set.size)
     count += selectedSolids.size
+    count += selectedBodies.length
     return count
-  }, [selectedFaces, selectedEdges, selectedVertices, selectedSolids])
+  }, [selectedFaces, selectedEdges, selectedVertices, selectedSolids, selectedBodies])
 
   // Select a face
   const selectFace = useCallback((shapeId, faceId, multiSelect = false) => {
@@ -156,6 +159,22 @@ export function SelectionProvider({ children }) {
       setSelectedFaces(new Map())
       setSelectedEdges(new Map())
       setSelectedVertices(new Map())
+      setSelectedBodies([shapeId])
+    }
+  }, [])
+
+  const selectBody = useCallback((bodyId, multiSelect = false) => {
+    setSelectedBodies((prev) => {
+      if (!multiSelect) return [bodyId]
+      if (prev.includes(bodyId)) return prev.filter((id) => id !== bodyId)
+      return [...prev, bodyId]
+    })
+
+    if (!multiSelect) {
+      setSelectedFaces(new Map())
+      setSelectedEdges(new Map())
+      setSelectedVertices(new Map())
+      setSelectedSolids(new Set([bodyId]))
     }
   }, [])
 
@@ -166,15 +185,16 @@ export function SelectionProvider({ children }) {
     setSelectedEdges(new Map())
     setSelectedVertices(new Map())
     setSelectedSolids(new Set())
+    setSelectedBodies([])
     setHoveredItem(null)
   }, [])
 
   // Set hover state
-  const setHover = useCallback((shapeId, type, topologyId) => {
-    if (shapeId === null) {
+  const setHover = useCallback((shapeId, type, topologyId, bodyId = null, subkind = null) => {
+    if (shapeId === null && bodyId === null) {
       setHoveredItem(null)
     } else {
-      setHoveredItem({ shapeId, type, topologyId })
+      setHoveredItem({ shapeId, type, topologyId, bodyId, subkind })
     }
   }, [])
 
@@ -197,6 +217,10 @@ export function SelectionProvider({ children }) {
   const isSolidSelected = useCallback((shapeId) => {
     return selectedSolids.has(shapeId)
   }, [selectedSolids])
+
+  const isBodySelected = useCallback((bodyId) => {
+    return selectedBodies.includes(bodyId)
+  }, [selectedBodies])
 
   // Get selected faces as flat array: [{ shapeId, faceId, data }]
   const getSelectedFacesFlat = useCallback((shapes) => {
@@ -256,18 +280,21 @@ export function SelectionProvider({ children }) {
     selectedEdges,
     selectedVertices,
     selectedSolids,
+    selectedBodies,
     hoveredItem,
     getSelectionCount,
     selectFace,
     selectEdge,
     selectVertex,
     selectSolid,
+    selectBody,
     clearSelection,
     setHover,
     isFaceSelected,
     isEdgeSelected,
     isVertexSelected,
     isSolidSelected,
+    isBodySelected,
     getSelectedFacesFlat,
     getSelectedEdgesFlat,
     getSelectedVerticesFlat,

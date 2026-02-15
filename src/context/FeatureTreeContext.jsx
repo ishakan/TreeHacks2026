@@ -1,21 +1,20 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
 import {
-  Feature,
   FeatureStatus,
   FeatureRegistry,
   createFeature,
 } from '../services/featureSystem'
 import { isOCCTReady } from '../services/occtService'
+import {
+  deserializeWorkerResult,
+  rebuildFeaturesInWorker,
+  serializeFeatureForWorker,
+  terminateRebuildWorker,
+} from '../services/featureRebuildWorkerClient'
+import { transformToFeatureParams } from '../services/transformFeatureUtils'
 
 const FeatureTreeContext = createContext(null)
 const LOG_PREFIX = '[FeatureTree]'
-
-// Helper to update boot tracker
-function bootMark(key, ok, error) {
-  if (typeof window !== 'undefined' && window.__BOOT) {
-    window.__BOOT.mark(key, ok, error);
-  }
-}
 
 /**
  * Feature Tree Provider
@@ -39,9 +38,6 @@ export function FeatureTreeProvider({ children }) {
   // Current computed result
   const [currentResult, setCurrentResult] = useState(null) // { shape, geometry, topologyMap }
   
-  // Intermediate results for each feature (for rollback preview)
-  const intermediateResultsRef = useRef(new Map()) // featureId -> result
-  
   // Is regeneration in progress?
   const [isRegenerating, setIsRegenerating] = useState(false)
   
@@ -50,8 +46,22 @@ export function FeatureTreeProvider({ children }) {
   
   // Selected feature for editing
   const [selectedFeatureId, setSelectedFeatureId] = useState(null)
+  const [lastRebuildProfile, setLastRebuildProfile] = useState(null)
+
+  const rebuildDirtyRef = useRef(false)
+  const rebuildTimerRef = useRef(null)
+  const rebuildRunningRef = useRef(false)
+  const rebuildSeqRef = useRef(0)
+  const pendingTriggerRef = useRef('initial')
+  const mutationTriggerRef = useRef('initial')
+  const latestStateRef = useRef({ features: [], rollbackIndex: -1 })
+  const intermediatesRef = useRef(new Map()) // featureId -> serialized worker payload
+  const hydratedIntermediatesRef = useRef(new Map()) // featureId -> hydrated result
 
   // Mark context as ready on mount (no longer tracked in boot overlay)
+  useEffect(() => {
+    latestStateRef.current = { features, rollbackIndex }
+  }, [features, rollbackIndex])
 
   /**
    * Add a new feature to the tree
@@ -76,6 +86,7 @@ export function FeatureTreeProvider({ children }) {
       }
       return newFeatures
     })
+    mutationTriggerRef.current = `add:${type}`
     
     // Auto-select the new feature
     setSelectedFeatureId(feature.id)
@@ -91,12 +102,12 @@ export function FeatureTreeProvider({ children }) {
     console.log(`${LOG_PREFIX} removeFeature: ${featureId}`)
     
     setFeatures(prev => prev.filter(f => f.id !== featureId))
+    mutationTriggerRef.current = `remove:${featureId}`
     
     if (selectedFeatureId === featureId) {
       setSelectedFeatureId(null)
     }
     
-    intermediateResultsRef.current.delete(featureId)
   }, [selectedFeatureId])
 
   /**
@@ -109,11 +120,15 @@ export function FeatureTreeProvider({ children }) {
     
     setFeatures(prev => prev.map(f => {
       if (f.id === featureId) {
-        f.params = { ...f.params, ...newParams }
-        f.status = FeatureStatus.PENDING
+        return {
+          ...f,
+          params: { ...f.params, ...newParams },
+          status: FeatureStatus.PENDING,
+        }
       }
       return f
     }))
+    mutationTriggerRef.current = `params:${featureId}`
   }, [])
 
   /**
@@ -125,11 +140,16 @@ export function FeatureTreeProvider({ children }) {
     
     setFeatures(prev => prev.map(f => {
       if (f.id === featureId) {
-        f.suppressed = !f.suppressed
-        f.status = f.suppressed ? FeatureStatus.SUPPRESSED : FeatureStatus.PENDING
+        const nextSuppressed = !f.suppressed
+        return {
+          ...f,
+          suppressed: nextSuppressed,
+          status: nextSuppressed ? FeatureStatus.SUPPRESSED : FeatureStatus.PENDING,
+        }
       }
       return f
     }))
+    mutationTriggerRef.current = `suppression:${featureId}`
   }, [])
 
   /**
@@ -146,6 +166,7 @@ export function FeatureTreeProvider({ children }) {
       newFeatures.splice(toIndex, 0, removed)
       return newFeatures
     })
+    mutationTriggerRef.current = `reorder:${fromIndex}->${toIndex}`
   }, [])
 
   /**
@@ -157,135 +178,165 @@ export function FeatureTreeProvider({ children }) {
     setRollbackIndex(index)
   }, [])
 
+  const getHydratedResult = useCallback((featureId) => {
+    if (!featureId) return null
+    if (hydratedIntermediatesRef.current.has(featureId)) {
+      return hydratedIntermediatesRef.current.get(featureId)
+    }
+    const serialized = intermediatesRef.current.get(featureId)
+    if (!serialized) return null
+    const hydrated = deserializeWorkerResult(serialized)
+    hydratedIntermediatesRef.current.set(featureId, hydrated)
+    return hydrated
+  }, [])
+
+  const selectResultForRollback = useCallback((nextRollbackIndex, nextFeatures) => {
+    if (!nextFeatures || nextFeatures.length === 0) {
+      setCurrentResult(null)
+      return
+    }
+
+    if (nextRollbackIndex === -1) {
+      setCurrentResult(getHydratedResult('__final__'))
+      return
+    }
+
+    const targetFeature = nextFeatures[nextRollbackIndex]
+    if (!targetFeature) {
+      setCurrentResult(getHydratedResult('__final__'))
+      return
+    }
+
+    setCurrentResult(getHydratedResult(targetFeature.id))
+  }, [getHydratedResult])
+
   /**
    * Regenerate the feature tree
    * Computes each feature in order, storing intermediate results
    */
-  const regenerate = useCallback(async () => {
+  const regenerate = useCallback(async (trigger = 'manual') => {
     if (!isOCCTReady()) {
       console.warn(`${LOG_PREFIX} OCCT not ready, skipping regeneration`)
       return
     }
-    
-    console.log(`${LOG_PREFIX} ========== REGENERATION START ==========`)
+    const { features: nextFeatures, rollbackIndex: nextRollbackIndex } = latestStateRef.current
+    const token = ++rebuildSeqRef.current
+    const serializedFeatures = nextFeatures.map(serializeFeatureForWorker)
+
+    rebuildRunningRef.current = true
     setIsRegenerating(true)
     setRebuildErrors([])
-    
-    const errors = []
-    let currentShape = null
-    const intermediates = new Map()
-    
-    // Determine how many features to compute
-    const computeCount = rollbackIndex === -1 
-      ? features.length 
-      : Math.min(rollbackIndex + 1, features.length)
-    
-    // Compute each feature in order
-    for (let i = 0; i < features.length; i++) {
-      const feature = features[i]
-      
-      // Skip suppressed features
-      if (feature.suppressed) {
-        feature.status = FeatureStatus.SUPPRESSED
-        console.log(`${LOG_PREFIX}   [${i}] ${feature.name} - SUPPRESSED`)
-        continue
-      }
-      
-      // Stop at rollback position
-      if (i >= computeCount) {
-        console.log(`${LOG_PREFIX}   [${i}] ${feature.name} - ROLLED BACK`)
-        break
-      }
-      
-      // Validate feature
-      const validation = feature.validate()
-      if (!validation.valid) {
-        feature.status = FeatureStatus.ERROR
-        feature.error = validation.errors.join(', ')
-        errors.push({ featureId: feature.id, message: feature.error })
-        console.log(`${LOG_PREFIX}   [${i}] ${feature.name} - VALIDATION ERROR: ${feature.error}`)
-        continue
-      }
-      
-      // Compute feature
-      try {
-        console.log(`${LOG_PREFIX}   [${i}] ${feature.name} - computing...`)
-        const result = feature.compute(currentShape, {
-          // Context for reference resolution
-          resolveReference: (refId) => {
-            // TODO: Implement reference resolution
-            return null
-          },
-        })
-        
-        currentShape = result.shape
-        feature._outputShape = result.shape
-        feature._outputGeometry = result.geometry
-        feature._outputTopologyMap = result.topologyMap
-        feature.status = FeatureStatus.OK
-        feature.error = null
-        
-        // Store intermediate result
-        intermediates.set(feature.id, {
-          shape: result.shape,
-          geometry: result.geometry,
-          topologyMap: result.topologyMap,
-        })
-        
-        console.log(`${LOG_PREFIX}   [${i}] ${feature.name} - OK`)
-        
-      } catch (err) {
-        console.error(`${LOG_PREFIX}   [${i}] ${feature.name} - ERROR:`, err)
-        feature.status = FeatureStatus.ERROR
-        feature.error = err.message
-        errors.push({ featureId: feature.id, message: err.message })
-        
-        // Continue with last good shape
-        // (Could also choose to stop here)
-      }
-    }
-    
-    // Store results
-    intermediateResultsRef.current = intermediates
-    setRebuildErrors(errors)
-    
-    // Get final result (last computed feature or last intermediate at rollback)
-    let finalResult = null
-    if (rollbackIndex === -1) {
-      // Use last non-suppressed feature result
-      for (let i = features.length - 1; i >= 0; i--) {
-        const feat = features[i]
-        if (!feat.suppressed && intermediates.has(feat.id)) {
-          finalResult = intermediates.get(feat.id)
-          break
-        }
-      }
-    } else {
-      // Use rollback feature result
-      const rollbackFeature = features[rollbackIndex]
-      if (rollbackFeature && intermediates.has(rollbackFeature.id)) {
-        finalResult = intermediates.get(rollbackFeature.id)
-      }
-    }
-    
-    setCurrentResult(finalResult)
-    setIsRegenerating(false)
-    
-    console.log(`${LOG_PREFIX} ========== REGENERATION COMPLETE ==========`)
-    console.log(`${LOG_PREFIX} Errors: ${errors.length}, Result: ${finalResult ? 'OK' : 'NONE'}`)
-    
-    return { errors, result: finalResult }
-  }, [features, rollbackIndex])
 
-  // Auto-regenerate when features change
-  useEffect(() => {
-    if (features.length > 0) {
-      regenerate()
-    } else {
+    const start = performance.now()
+    const { promise } = rebuildFeaturesInWorker({
+      features: serializedFeatures,
+      trigger,
+    })
+
+    try {
+      const response = await promise
+      if (token !== rebuildSeqRef.current) {
+        return null
+      }
+
+      const statusesById = new Map(response.statuses.map((entry) => [entry.id, entry]))
+      setFeatures((prev) => prev.map((feature) => {
+        const status = statusesById.get(feature.id)
+        if (!status) return feature
+        return {
+          ...feature,
+          status: status.status,
+          error: status.error || null,
+          needsRepair: status.needsRepair || [],
+        }
+      }))
+
+      const serializedMap = new Map()
+      for (const entry of response.intermediates || []) {
+        serializedMap.set(entry.featureId, entry.result)
+      }
+      if (response.finalResult) {
+        serializedMap.set('__final__', response.finalResult)
+      }
+      intermediatesRef.current = serializedMap
+      hydratedIntermediatesRef.current = new Map()
+      setRebuildErrors(response.errors || [])
+      selectResultForRollback(nextRollbackIndex, nextFeatures)
+
+      const durationMs = performance.now() - start
+      const profile = {
+        trigger,
+        featureCount: nextFeatures.length,
+        durationMs,
+      }
+      setLastRebuildProfile(profile)
+      console.log(
+        `${LOG_PREFIX} rebuild ${trigger} | features=${profile.featureCount} | ${profile.durationMs.toFixed(1)}ms`
+      )
+      return { errors: response.errors || [], result: getHydratedResult('__final__'), profile }
+    } catch (error) {
+      if (token !== rebuildSeqRef.current) {
+        return null
+      }
+      const message = error instanceof Error ? error.message : String(error)
+      setRebuildErrors([{ featureId: 'rebuild', message }])
       setCurrentResult(null)
-      intermediateResultsRef.current.clear()
+      return { errors: [{ featureId: 'rebuild', message }], result: null }
+    } finally {
+      if (token === rebuildSeqRef.current) {
+        rebuildRunningRef.current = false
+        setIsRegenerating(false)
+      }
+      if (rebuildDirtyRef.current) {
+        rebuildDirtyRef.current = false
+        regenerate(pendingTriggerRef.current || 'queued')
+      }
     }
-  }, [features, rollbackIndex])
+  }, [selectResultForRollback])
+
+  const requestRebuild = useCallback((trigger) => {
+    pendingTriggerRef.current = trigger
+    rebuildDirtyRef.current = true
+    if (rebuildTimerRef.current) {
+      clearTimeout(rebuildTimerRef.current)
+      rebuildTimerRef.current = null
+    }
+
+    rebuildTimerRef.current = setTimeout(() => {
+      rebuildTimerRef.current = null
+      if (!rebuildDirtyRef.current || rebuildRunningRef.current) return
+      rebuildDirtyRef.current = false
+      regenerate(trigger)
+    }, 50)
+  }, [regenerate])
+
+  useEffect(() => {
+    if (features.length === 0) {
+      setCurrentResult(null)
+      setRebuildErrors([])
+      intermediatesRef.current.clear()
+      hydratedIntermediatesRef.current.clear()
+      return
+    }
+
+    const trigger = mutationTriggerRef.current || 'features-change'
+    if (!trigger.startsWith('metadata:')) {
+      requestRebuild(trigger)
+    }
+    mutationTriggerRef.current = null
+  }, [features, requestRebuild])
+
+  useEffect(() => {
+    selectResultForRollback(rollbackIndex, features)
+  }, [rollbackIndex, features, selectResultForRollback])
+
+  useEffect(() => () => {
+    if (rebuildTimerRef.current) {
+      clearTimeout(rebuildTimerRef.current)
+      rebuildTimerRef.current = null
+    }
+    terminateRebuildWorker()
+  }, [])
 
   /**
    * Get intermediate result for a feature (for preview)
@@ -293,8 +344,8 @@ export function FeatureTreeProvider({ children }) {
    * @returns {Object|null} - Result or null
    */
   const getIntermediateResult = useCallback((featureId) => {
-    return intermediateResultsRef.current.get(featureId) || null
-  }, [])
+    return getHydratedResult(featureId)
+  }, [getHydratedResult])
 
   /**
    * Get feature by ID
@@ -337,7 +388,9 @@ export function FeatureTreeProvider({ children }) {
     setRollbackIndex(-1)
     setSelectedFeatureId(null)
     setRebuildErrors([])
-    intermediateResultsRef.current.clear()
+    intermediatesRef.current.clear()
+    hydratedIntermediatesRef.current.clear()
+    mutationTriggerRef.current = 'clear'
   }, [])
 
   /**
@@ -348,10 +401,60 @@ export function FeatureTreeProvider({ children }) {
   const renameFeature = useCallback((featureId, newName) => {
     setFeatures(prev => prev.map(f => {
       if (f.id === featureId) {
-        f.name = newName
+        return { ...f, name: newName }
       }
       return f
     }))
+    mutationTriggerRef.current = `metadata:rename:${featureId}`
+  }, [])
+
+  const upsertTransformFeatureForBody = useCallback((bodyId, bodyName, transform, preferredFeatureId = null) => {
+    const nextParams = transformToFeatureParams(transform, bodyId)
+    let featureId = null
+
+    setFeatures((prev) => {
+      const next = [...prev]
+      let targetIndex = -1
+
+      if (preferredFeatureId) {
+        targetIndex = next.findIndex((entry) => entry.id === preferredFeatureId && entry.type === 'transform')
+      }
+      if (targetIndex < 0) {
+        targetIndex = next.findIndex((entry) => entry.type === 'transform' && entry.params?.bodyId === bodyId)
+      }
+
+      if (targetIndex >= 0) {
+        const target = next[targetIndex]
+        featureId = target.id
+        next[targetIndex] = {
+          ...target,
+          params: {
+            ...target.params,
+            ...nextParams,
+          },
+          status: FeatureStatus.PENDING,
+          error: null,
+          suppressed: false,
+        }
+      } else {
+        const created = createFeature(
+          'transform',
+          `${bodyName || 'Body'} Transform`,
+          nextParams,
+          []
+        )
+        featureId = created.id
+        next.push(created)
+      }
+
+      return next
+    })
+
+    mutationTriggerRef.current = `params:transform:${bodyId}`
+    if (featureId) {
+      setSelectedFeatureId(featureId)
+    }
+    return featureId
   }, [])
 
   const value = {
@@ -375,6 +478,8 @@ export function FeatureTreeProvider({ children }) {
     getAvailableFeatureTypes,
     clearFeatures,
     renameFeature,
+    upsertTransformFeatureForBody,
+    lastRebuildProfile,
   }
 
   return (

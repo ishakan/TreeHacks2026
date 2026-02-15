@@ -43,11 +43,15 @@ export default function SketchCanvas() {
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(50) // pixels per unit
   const [isDrawing, setIsDrawing] = useState(false)
-  const [startPoint, setStartPoint] = useState(null)
+  const [startPoint, setStartPoint] = useState(null) // { x, y, pointId }
   const [currentPoint, setCurrentPoint] = useState(null)
+  const [cursorPoint, setCursorPoint] = useState(null)
+  const [pendingCircleCenter, setPendingCircleCenter] = useState(null) // { x, y, pointId }
   const [hoveredPoint, setHoveredPoint] = useState(null) // { entityId, pointName }
   const [isPanning, setIsPanning] = useState(false)
   const [lastPanPos, setLastPanPos] = useState(null)
+  const [lastPointerDownAt, setLastPointerDownAt] = useState(null)
+  const [debugNote, setDebugNote] = useState('')
 
   const {
     isSketchMode,
@@ -69,8 +73,35 @@ export default function SketchCanvas() {
     currentSnap,
     findSnap,
     getSnappedPosition,
+    createOrReusePoint,
     highlightedEntityIds,
+    pointNodes,
+    sketches,
+    activeSketchId,
   } = useSketch()
+  const debugSketch = typeof window !== 'undefined' && Boolean(window.__DEBUG_SKETCH__)
+  const currentStage = startPoint ? 'hasStart' : 'idle'
+  const snapDistance = Math.max(0.08, 12 / zoom)
+  const activeSketchMeta = sketches.find((item) => item.id === activeSketchId) || null
+  const isActiveSketchVisible = activeSketchMeta ? activeSketchMeta.visible !== false : true
+
+  const resolvePointIdFromSnap = useCallback((snap) => {
+    if (!snap?.sourceEntity) return null
+
+    const entity = snap.sourceEntity
+    if (snap.type === SnapType.ENDPOINT && entity.type === 'line') {
+      const isP1 = Math.abs(entity.p1.x - snap.point.x) < 1e-6 && Math.abs(entity.p1.y - snap.point.y) < 1e-6
+      if (isP1) return entity.p1.id || null
+      const isP2 = Math.abs(entity.p2.x - snap.point.x) < 1e-6 && Math.abs(entity.p2.y - snap.point.y) < 1e-6
+      if (isP2) return entity.p2.id || null
+    }
+
+    if (snap.type === SnapType.CENTER && entity.center) {
+      return entity.center.id || null
+    }
+
+    return null
+  }, [])
 
   // Convert screen coordinates to world coordinates
   const screenToWorld = useCallback((screenX, screenY) => {
@@ -397,6 +428,12 @@ export default function SketchCanvas() {
     const startScreen = worldToScreen(startPoint.x, startPoint.y)
     const currentScreen = worldToScreen(currentPoint.x, currentPoint.y)
 
+    // Show anchored start node immediately after first click.
+    ctx.fillStyle = COLORS.point
+    ctx.beginPath()
+    ctx.arc(startScreen.x, startScreen.y, 4, 0, Math.PI * 2)
+    ctx.fill()
+
     if (activeTool === SketchTool.LINE) {
       ctx.beginPath()
       ctx.moveTo(startScreen.x, startScreen.y)
@@ -429,28 +466,50 @@ export default function SketchCanvas() {
     drawGrid(ctx)
 
     // Draw entities
-    entities.forEach(entity => {
-      const isSelected = entity.id === selectedEntityId || selectedEntityIds?.includes(entity.id)
-      const isHighlighted = highlightedEntityIds?.includes(entity.id)
-      
-      if (entity.type === 'line') {
-        drawLine(ctx, entity, isSelected, isHighlighted)
-      } else if (entity.type === 'circle') {
-        drawCircle(ctx, entity, isSelected, isHighlighted)
-      } else if (entity.type === 'arc') {
-        drawArc(ctx, entity, isSelected, isHighlighted)
-      }
-    })
+    if (isActiveSketchVisible) {
+      entities.forEach(entity => {
+        const isSelected = entity.id === selectedEntityId || selectedEntityIds?.includes(entity.id)
+        const isHighlighted = highlightedEntityIds?.includes(entity.id)
+        
+        if (entity.type === 'line') {
+          drawLine(ctx, entity, isSelected, isHighlighted)
+        } else if (entity.type === 'circle') {
+          drawCircle(ctx, entity, isSelected, isHighlighted)
+        } else if (entity.type === 'arc') {
+          drawArc(ctx, entity, isSelected, isHighlighted)
+        }
+      })
+    }
 
     // Draw constraints
-    drawConstraints(ctx)
+    if (isActiveSketchVisible) {
+      drawConstraints(ctx)
+    }
 
     // Draw temp shape
-    drawTemp(ctx)
+    if (isActiveSketchVisible) {
+      drawTemp(ctx)
+    }
     
     // Draw snap indicator
-    drawSnapIndicator(ctx)
-  }, [canvasSize, drawGrid, entities, selectedEntityId, selectedEntityIds, highlightedEntityIds, drawLine, drawCircle, drawArc, drawConstraints, drawTemp, drawSnapIndicator])
+    if (isActiveSketchVisible) {
+      drawSnapIndicator(ctx)
+    }
+  }, [
+    canvasSize,
+    drawGrid,
+    entities,
+    selectedEntityId,
+    selectedEntityIds,
+    highlightedEntityIds,
+    drawLine,
+    drawCircle,
+    drawArc,
+    drawConstraints,
+    drawTemp,
+    drawSnapIndicator,
+    isActiveSketchVisible,
+  ])
 
   // Handle canvas resize
   useEffect(() => {
@@ -492,6 +551,7 @@ export default function SketchCanvas() {
 
   // Mouse handlers
   const handleMouseDown = (e) => {
+    if (!isActiveSketchVisible) return
     const rect = canvasRef.current.getBoundingClientRect()
     const screenX = e.clientX - rect.left
     const screenY = e.clientY - rect.top
@@ -552,20 +612,61 @@ export default function SketchCanvas() {
       if (e.detail === 2 && clickedEntity) {
         startDragEntity(clickedEntity.id, worldPos.x, worldPos.y)
       }
-    } else if (activeTool === SketchTool.LINE || activeTool === SketchTool.CIRCLE) {
-      // Apply snapping to start point
-      const snapped = getSnappedPosition(worldPos.x, worldPos.y)
+    } else if (activeTool === SketchTool.LINE) {
+      const snapped = getSnappedPosition(worldPos.x, worldPos.y, pendingCircleCenter || startPoint, snapDistance)
+      const preferredId = resolvePointIdFromSnap(snapped.snap)
+      const startNode = createOrReusePoint(snapped.x, snapped.y, preferredId)
+      setDebugNote(snapped.snap ? `SNAP:${snapped.snap.type}` : 'FREE')
+
+      if (!startPoint) {
+        setStartPoint({ x: startNode.x, y: startNode.y, pointId: startNode.id })
+        setCurrentPoint({ x: startNode.x, y: startNode.y })
+        setIsDrawing(true)
+        return
+      }
+
+      const endNode = createOrReusePoint(snapped.x, snapped.y, preferredId)
+      if (startPoint.pointId !== endNode.id) {
+        addLine(startPoint.x, startPoint.y, endNode.x, endNode.y, startPoint.pointId, endNode.id)
+      }
+      // Continue polyline until Enter/Esc.
+      setStartPoint({ x: endNode.x, y: endNode.y, pointId: endNode.id })
+      setCurrentPoint({ x: endNode.x, y: endNode.y })
       setIsDrawing(true)
-      setStartPoint({ x: snapped.x, y: snapped.y })
-      setCurrentPoint({ x: snapped.x, y: snapped.y })
+    } else if (activeTool === SketchTool.CIRCLE) {
+      const snapped = getSnappedPosition(worldPos.x, worldPos.y, pendingCircleCenter || startPoint, snapDistance)
+      const preferredId = resolvePointIdFromSnap(snapped.snap)
+      const centerNode = createOrReusePoint(snapped.x, snapped.y, preferredId)
+      setDebugNote(snapped.snap ? `SNAP:${snapped.snap.type}` : 'FREE')
+      if (!pendingCircleCenter) {
+        setPendingCircleCenter({ x: centerNode.x, y: centerNode.y, pointId: centerNode.id })
+        setStartPoint({ x: centerNode.x, y: centerNode.y, pointId: centerNode.id })
+        setCurrentPoint({ x: centerNode.x, y: centerNode.y })
+        setIsDrawing(true)
+        return
+      }
+
+      const radius = Math.sqrt(
+        (snapped.x - pendingCircleCenter.x) ** 2 +
+        (snapped.y - pendingCircleCenter.y) ** 2
+      )
+      if (radius > 1e-4) {
+        addCircle(pendingCircleCenter.x, pendingCircleCenter.y, radius, pendingCircleCenter.pointId)
+      }
+      setPendingCircleCenter(null)
+      setStartPoint(null)
+      setCurrentPoint(null)
+      setIsDrawing(false)
     }
   }
 
   const handleMouseMove = (e) => {
+    if (!isActiveSketchVisible) return
     const rect = canvasRef.current.getBoundingClientRect()
     const screenX = e.clientX - rect.left
     const screenY = e.clientY - rect.top
     const worldPos = screenToWorld(screenX, screenY)
+    setCursorPoint(worldPos)
 
     // Handle panning
     if (isPanning && lastPanPos) {
@@ -589,15 +690,21 @@ export default function SketchCanvas() {
     // Drawing mode
     if (isDrawing) {
       // Apply snapping during drawing
-      const snapped = getSnappedPosition(worldPos.x, worldPos.y, startPoint)
+      const snapped = getSnappedPosition(
+        worldPos.x,
+        worldPos.y,
+        pendingCircleCenter || startPoint,
+        snapDistance
+      )
       setCurrentPoint({ x: snapped.x, y: snapped.y })
     } else {
       // Just update snap indicator when not drawing
-      findSnap(worldPos.x, worldPos.y, startPoint)
+      findSnap(worldPos.x, worldPos.y, pendingCircleCenter || startPoint, snapDistance)
     }
   }
 
   const handleMouseUp = (e) => {
+    if (!isActiveSketchVisible) return
     // End panning
     if (isPanning) {
       setIsPanning(false)
@@ -611,32 +718,7 @@ export default function SketchCanvas() {
       return
     }
 
-    if (!isDrawing || !startPoint || !currentPoint) {
-      setIsDrawing(false)
-      return
-    }
-
-    if (activeTool === SketchTool.LINE) {
-      const dist = Math.sqrt(
-        (currentPoint.x - startPoint.x) ** 2 +
-        (currentPoint.y - startPoint.y) ** 2
-      )
-      if (dist > 0.1) {
-        addLine(startPoint.x, startPoint.y, currentPoint.x, currentPoint.y)
-      }
-    } else if (activeTool === SketchTool.CIRCLE) {
-      const radius = Math.sqrt(
-        (currentPoint.x - startPoint.x) ** 2 +
-        (currentPoint.y - startPoint.y) ** 2
-      )
-      if (radius > 0.1) {
-        addCircle(startPoint.x, startPoint.y, radius)
-      }
-    }
-
-    setIsDrawing(false)
-    setStartPoint(null)
-    setCurrentPoint(null)
+    // Click-click workflows commit on second click in handleMouseDown.
   }
 
   // Handle wheel zoom
@@ -646,20 +728,70 @@ export default function SketchCanvas() {
     setZoom(prev => Math.min(200, Math.max(10, prev * zoomFactor)))
   }
 
+  const handlePointerDownCapture = useCallback((event) => {
+    if (!isSketchMode) return
+    setLastPointerDownAt(Date.now())
+    event.stopPropagation()
+    event.nativeEvent?.stopImmediatePropagation?.()
+  }, [isSketchMode])
+
+  const stopPointerPropagation = useCallback((event) => {
+    if (!isSketchMode) return
+    event.stopPropagation()
+  }, [isSketchMode])
+
+  const handleKeyDown = useCallback((event) => {
+    if (!isSketchMode) return
+
+    if (event.key === 'Escape') {
+      setIsDrawing(false)
+      setStartPoint(null)
+      setCurrentPoint(null)
+      setPendingCircleCenter(null)
+      return
+    }
+    if (event.key === 'Enter' && activeTool === SketchTool.LINE) {
+      setIsDrawing(false)
+      setStartPoint(null)
+      setCurrentPoint(null)
+    }
+  }, [activeTool, isSketchMode])
+
+  useEffect(() => {
+    if (!isSketchMode) return
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleKeyDown, isSketchMode])
+
   if (!isSketchMode) return null
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={canvasSize.width}
-      height={canvasSize.height}
-      className="absolute inset-0 cursor-crosshair"
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      onWheel={handleWheel}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        width={canvasSize.width}
+        height={canvasSize.height}
+        className="absolute inset-0 z-30 cursor-crosshair pointer-events-auto"
+        onPointerDownCapture={handlePointerDownCapture}
+        onPointerMoveCapture={stopPointerPropagation}
+        onPointerUpCapture={stopPointerPropagation}
+        onWheelCapture={stopPointerPropagation}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onWheel={handleWheel}
+      />
+      {debugSketch && (
+        <div className="absolute left-2 top-2 z-40 rounded border border-cyan-400/40 bg-black/60 px-2 py-1 text-[11px] text-cyan-200 pointer-events-none">
+          tool={activeTool} sketch={String(isSketchMode)} stage={currentStage} cursor=(
+          {Number.isFinite(cursorPoint?.x) ? cursorPoint.x.toFixed(3) : 'NaN'},{' '}
+          {Number.isFinite(cursorPoint?.y) ? cursorPoint.y.toFixed(3) : 'NaN'}) entities={entities.length} points={pointNodes.length} visible={String(isActiveSketchVisible)}{' '}
+          pointerDownAt={lastPointerDownAt ? new Date(lastPointerDownAt).toLocaleTimeString() : '-'} {debugNote}
+        </div>
+      )}
+    </>
   )
 }
 

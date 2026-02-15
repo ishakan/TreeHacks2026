@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 const DEBUG_ENABLED = typeof window !== 'undefined' &&
-  (window.__DEBUG === true || import.meta.env.VITE_DEBUG === 'true' || true) // Temporarily enabled by default
+  (window.__DEBUG === true || import.meta.env.VITE_DEBUG === 'true')
 
 export default function DebugOverlay() {
   const [metrics, setMetrics] = useState({
@@ -26,12 +26,15 @@ export default function DebugOverlay() {
 
   // Track renders
   useEffect(() => {
+    if (!DEBUG_ENABLED) return undefined
     renderCountRef.current += 1
     stateUpdateCountRef.current += 1
+    return undefined
   })
 
   // Update metrics display every 100ms
   useEffect(() => {
+    if (!DEBUG_ENABLED) return undefined
     updateIntervalRef.current = setInterval(() => {
       const now = Date.now()
       const elapsed = (now - lastUpdateTimeRef.current) / 1000
@@ -53,6 +56,7 @@ export default function DebugOverlay() {
 
   // Track animation frame
   useEffect(() => {
+    if (!DEBUG_ENABLED) return undefined
     let rafId
     const tick = () => {
       frameCountRef.current += 1

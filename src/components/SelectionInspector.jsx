@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSelection, SelectionMode } from '../context/SelectionContext'
 import { useShapes } from '../context/ShapeContext'
 import { useSketch } from '../context/SketchContext'
 import { useFeatureHistory } from '../context/FeatureHistoryContext'
+import { useWorkspace } from '../context/WorkspaceContext'
+import { useFeatureTree } from '../context/FeatureTreeContext'
 
 export default function SelectionInspector() {
   const {
@@ -12,6 +14,7 @@ export default function SelectionInspector() {
     selectedEdges,
     selectedVertices,
     selectedSolids,
+    selectedBodies,
     hoveredItem,
     getSelectedFacesFlat,
     getSelectedEdgesFlat,
@@ -20,6 +23,22 @@ export default function SelectionInspector() {
   
   const { shapes } = useShapes()
   const { isSketchMode } = useSketch()
+  const {
+    bodies,
+    activeBodyId,
+    getBody,
+    updateBodyTransform,
+    transformMode,
+    setTransformMode,
+    convertMeshBodyToSolid,
+    booleanBodies,
+    getBodyDebugInfo,
+    highlightBodyMeshes,
+    debugEnabled,
+  } = useWorkspace()
+  const { features, selectedFeatureId, getFeature, upsertTransformFeatureForBody } = useFeatureTree()
+  const [highlightMeshes, setHighlightMeshes] = useState(false)
+  const lastHighlightedBodyRef = useRef(null)
   
   // Get feature history for persistent ID info
   const {
@@ -53,7 +72,71 @@ export default function SelectionInspector() {
   const totalEdges = selectedEdgesData.length
   const totalVertices = selectedVerticesData.length
   const totalSolids = selectedSolids.size
-  const totalSelection = totalFaces + totalEdges + totalVertices + totalSolids
+  const totalBodyCount = selectedBodies.length
+  const totalSelection = totalFaces + totalEdges + totalVertices + totalSolids + totalBodyCount
+
+  const selectedBody = useMemo(() => {
+    const selectedId = selectedBodies[0] || activeBodyId
+    return selectedId ? getBody(selectedId) : null
+  }, [selectedBodies, activeBodyId, getBody])
+
+  const selectedBodyTransform = useMemo(() => {
+    if (!selectedBody) return null
+    if (selectedBody.kind !== 'brep') return selectedBody.transform
+
+    const selectedFeature = selectedFeatureId ? getFeature(selectedFeatureId) : null
+    const matching = (
+      selectedFeature?.type === 'transform' && selectedFeature.params?.bodyId === selectedBody.id
+    )
+      ? selectedFeature
+      : [...features].reverse().find((feature) => (
+        feature.type === 'transform' && feature.params?.bodyId === selectedBody.id
+      ))
+
+    if (!matching) return selectedBody.transform
+    return {
+      position: [
+        matching.params.translateX ?? 0,
+        matching.params.translateY ?? 0,
+        matching.params.translateZ ?? 0,
+      ],
+      rotation: [
+        (matching.params.rotateX ?? 0) * Math.PI / 180,
+        (matching.params.rotateY ?? 0) * Math.PI / 180,
+        (matching.params.rotateZ ?? 0) * Math.PI / 180,
+      ],
+      scale: [
+        matching.params.scaleX ?? matching.params.scale ?? 1,
+        matching.params.scaleY ?? matching.params.scale ?? 1,
+        matching.params.scaleZ ?? matching.params.scale ?? 1,
+      ],
+    }
+  }, [selectedBody, selectedFeatureId, getFeature, features])
+
+  const selectedBodiesResolved = useMemo(() => {
+    return selectedBodies.map((id) => bodies.find((b) => b.id === id)).filter(Boolean)
+  }, [selectedBodies, bodies])
+
+  const selectedBodyDebug = useMemo(() => {
+    if (!selectedBody || !debugEnabled) return null
+    return getBodyDebugInfo(selectedBody.id)
+  }, [selectedBody, debugEnabled, getBodyDebugInfo])
+
+  useEffect(() => {
+    if (lastHighlightedBodyRef.current) {
+      highlightBodyMeshes(lastHighlightedBodyRef.current, false)
+      lastHighlightedBodyRef.current = null
+    }
+    setHighlightMeshes(false)
+  }, [selectedBody?.id, highlightBodyMeshes])
+
+  useEffect(() => {
+    return () => {
+      if (lastHighlightedBodyRef.current) {
+        highlightBodyMeshes(lastHighlightedBodyRef.current, false)
+      }
+    }
+  }, [highlightBodyMeshes])
 
   // Calculate total area for selected faces
   const totalArea = useMemo(() => {
@@ -64,6 +147,66 @@ export default function SelectionInspector() {
   const totalLength = useMemo(() => {
     return selectedEdgesData.reduce((sum, edge) => sum + (edge.length || 0), 0)
   }, [selectedEdgesData])
+
+  const updateSelectedBodyTransformAxis = (group, axis, value) => {
+    if (!selectedBody || !selectedBodyTransform) return
+    const numeric = Number(value)
+    if (!Number.isFinite(numeric)) return
+    const nextTransform = {
+      position: [...selectedBodyTransform.position],
+      rotation: [...selectedBodyTransform.rotation],
+      scale: [...selectedBodyTransform.scale],
+    }
+    nextTransform[group][axis] = numeric
+    if (selectedBody.kind === 'brep') {
+      const selectedFeature = selectedFeatureId ? getFeature(selectedFeatureId) : null
+      const preferredFeatureId = (
+        selectedFeature?.type === 'transform' && selectedFeature.params?.bodyId === selectedBody.id
+      )
+        ? selectedFeature.id
+        : null
+      upsertTransformFeatureForBody(selectedBody.id, selectedBody.name, nextTransform, preferredFeatureId)
+      updateBodyTransform(selectedBody.id, {
+        position: [0, 0, 0],
+        rotation: [0, 0, 0],
+        scale: [1, 1, 1],
+      })
+      return
+    }
+    updateBodyTransform(selectedBody.id, nextTransform)
+  }
+
+  const handleConvertToSolid = () => {
+    if (!selectedBody || selectedBody.kind !== 'mesh') return
+    const result = convertMeshBodyToSolid(selectedBody.id)
+    if (!result.ok) {
+      alert(`Convert mesh to solid failed: ${result.error}`)
+      return
+    }
+    if (result.warning) {
+      alert(`Converted with warning: ${result.warning}`)
+    }
+  }
+
+  const handleBoolean = (operation) => {
+    if (selectedBodiesResolved.length < 2) {
+      alert('Select exactly two bodies (target first, tool second).')
+      return
+    }
+    const [target, tool] = selectedBodiesResolved
+    const result = booleanBodies(target.id, tool.id, operation)
+    if (!result.ok) {
+      alert(`Boolean failed: ${result.error}`)
+    }
+  }
+
+  const toggleHighlightMeshes = () => {
+    if (!selectedBody) return
+    const next = !highlightMeshes
+    setHighlightMeshes(next)
+    highlightBodyMeshes(selectedBody.id, next)
+    lastHighlightedBodyRef.current = next ? selectedBody.id : null
+  }
 
   // Don't show in sketch mode
   if (isSketchMode) return null
@@ -102,19 +245,91 @@ export default function SelectionInspector() {
             Edge
           </button>
           <button 
-            onClick={() => setSelectionMode(SelectionMode.VERTEX)}
-            className={getModeButtonClass(SelectionMode.VERTEX)}
+            onClick={() => setSelectionMode(SelectionMode.BODY)}
+            className={getModeButtonClass(SelectionMode.BODY)}
           >
-            Vertex
-          </button>
-          <button 
-            onClick={() => setSelectionMode(SelectionMode.SOLID)}
-            className={getModeButtonClass(SelectionMode.SOLID)}
-          >
-            Solid
+            Body
           </button>
         </div>
       </div>
+
+      {/* Body Transform and Workflow */}
+      {selectedBody && (
+        <div className="p-3 border-b border-gray-700 space-y-2">
+          <div className="text-xs text-gray-400">Body</div>
+          <div className="text-sm text-blue-300">{selectedBody.name} ({selectedBody.kind})</div>
+
+          <div className="flex gap-1">
+            <button
+              onClick={() => setTransformMode('translate')}
+              className={`px-2 py-1 text-xs rounded ${transformMode === 'translate' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+            >
+              Move
+            </button>
+            <button
+              onClick={() => setTransformMode('rotate')}
+              className={`px-2 py-1 text-xs rounded ${transformMode === 'rotate' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+            >
+              Rotate
+            </button>
+            <button
+              onClick={() => setTransformMode('scale')}
+              className={`px-2 py-1 text-xs rounded ${transformMode === 'scale' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+            >
+              Scale
+            </button>
+          </div>
+
+          <TransformRow
+            label="Position"
+            values={selectedBodyTransform?.position || [0, 0, 0]}
+            onChange={(axis, value) => updateSelectedBodyTransformAxis('position', axis, value)}
+          />
+          <TransformRow
+            label="Rotation"
+            values={selectedBodyTransform?.rotation || [0, 0, 0]}
+            onChange={(axis, value) => updateSelectedBodyTransformAxis('rotation', axis, value)}
+          />
+          <TransformRow
+            label="Scale"
+            values={selectedBodyTransform?.scale || [1, 1, 1]}
+            onChange={(axis, value) => updateSelectedBodyTransformAxis('scale', axis, value)}
+          />
+
+          {selectedBody.kind === 'mesh' && (
+            <button
+              onClick={handleConvertToSolid}
+              className="w-full px-2 py-1 text-xs rounded bg-emerald-700 text-white hover:bg-emerald-600"
+            >
+              Convert Mesh to Solid (Experimental)
+            </button>
+          )}
+
+          <div className="text-[11px] text-gray-500">
+            Mesh: Move/Rotate/Scale and Mesh Boolean (approx). Solid-only features require conversion.
+          </div>
+
+          {debugEnabled && selectedBodyDebug && (
+            <div className="mt-2 rounded border border-gray-700 p-2 text-[11px] text-gray-300 space-y-1">
+              <div className="text-gray-400">Debug (Imported Body)</div>
+              <div>uuid: <span className="text-gray-500">{selectedBodyDebug.objectUuid || 'n/a'}</span></div>
+              <div>meshCount: {selectedBodyDebug.meshCount ?? 0}</div>
+              <div>triangles: {selectedBodyDebug.triangles ?? 0}</div>
+              <div>
+                bbox: {selectedBodyDebug.bbox
+                  ? `min(${selectedBodyDebug.bbox.min.map((v) => v.toFixed(3)).join(', ')}) max(${selectedBodyDebug.bbox.max.map((v) => v.toFixed(3)).join(', ')})`
+                  : 'empty'}
+              </div>
+              <button
+                onClick={toggleHighlightMeshes}
+                className="w-full px-2 py-1 rounded bg-amber-700 text-white hover:bg-amber-600"
+              >
+                {highlightMeshes ? 'Unhighlight meshes' : 'Highlight meshes'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Debug Mode Toggle */}
       <div className="px-3 py-2 border-b border-gray-700 flex items-center justify-between">
@@ -177,7 +392,43 @@ export default function SelectionInspector() {
                   <span className="text-orange-400">{totalSolids}</span>
                 </div>
               )}
+              {totalBodyCount > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Bodies:</span>
+                  <span className="text-orange-400">{totalBodyCount}</span>
+                </div>
+              )}
             </div>
+
+            {selectedBodiesResolved.length >= 2 && (
+              <>
+                <div className="border-t border-gray-700 my-2" />
+                <div className="text-xs text-gray-400">Boolean (Body)</div>
+                <div className="grid grid-cols-3 gap-1">
+                  <button
+                    onClick={() => handleBoolean('union')}
+                    className="px-2 py-1 text-xs rounded bg-gray-700 text-gray-200 hover:bg-gray-600"
+                  >
+                    Join
+                  </button>
+                  <button
+                    onClick={() => handleBoolean('cut')}
+                    className="px-2 py-1 text-xs rounded bg-gray-700 text-gray-200 hover:bg-gray-600"
+                  >
+                    Cut
+                  </button>
+                  <button
+                    onClick={() => handleBoolean('intersect')}
+                    className="px-2 py-1 text-xs rounded bg-gray-700 text-gray-200 hover:bg-gray-600"
+                  >
+                    Intersect
+                  </button>
+                </div>
+                <div className="text-[11px] text-gray-500">
+                  Mesh bodies use Mesh Boolean (approx). Mixed mesh/solid operations run via OCCT with proxy mesh conversion.
+                </div>
+              </>
+            )}
 
             {/* Properties */}
             {(totalArea > 0 || totalLength > 0) && (
@@ -263,6 +514,26 @@ export default function SelectionInspector() {
         <div className="text-xs text-gray-500">
           <span className="text-gray-400">Shift+Click</span> multi-select • <span className="text-gray-400">Esc</span> deselect
         </div>
+      </div>
+    </div>
+  )
+}
+
+function TransformRow({ label, values, onChange }) {
+  return (
+    <div>
+      <div className="text-xs text-gray-400 mb-1">{label}</div>
+      <div className="grid grid-cols-3 gap-1">
+        {[0, 1, 2].map((axis) => (
+          <input
+            key={`${label}-${axis}`}
+            type="number"
+            step={label === 'Scale' ? 0.01 : 0.1}
+            value={values[axis]}
+            onChange={(e) => onChange(axis, e.target.value)}
+            className="w-full px-1 py-1 text-xs bg-gray-700 text-gray-200 rounded border border-gray-600"
+          />
+        ))}
       </div>
     </div>
   )
