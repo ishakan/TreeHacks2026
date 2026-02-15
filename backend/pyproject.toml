@@ -9,6 +9,8 @@ dependencies = [
     "uvicorn[standard]",
     "python-dotenv",
     "pydantic",
+    "opencv-python-headless",
+    "numpy",
 ]
 
 [build-system]

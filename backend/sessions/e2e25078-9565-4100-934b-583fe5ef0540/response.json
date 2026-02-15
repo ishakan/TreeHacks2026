@@ -1,9 +1,0 @@
-{
-  "sceneGraph": {
-    "type": "cube",
-    "size": [20, 20, 20],
-    "center": true,
-    "color": "red"
-  },
-  "markdown": "# Simple Red Cube\n\nThis is a basic 3D model consisting of a single cube with a vibrant red color.\n\n## Features\n- **Centered cube**: The cube is centered at the origin for easy positioning\n- **Uniform dimensions**: All sides are equal length (20 units)\n- **Bright red color**: Applied using CSS color 'red'\n\n## Customization\n\nYou can adjust the following parameters:\n\n- **cube_size**: Change the size of the cube (default: 20 units)\n  - Smaller values (e.g., 10) create a compact cube\n  - Larger values (e.g., 50) create a bigger cube\n\n## 3D Printing\n\nThis model is highly printable:\n- ✓ No overhangs\n- ✓ Solid geometry\n- ✓ No support structures needed\n- ✓ Prints in any orientation\n\nSimply scale to your desired size in your slicer software."
-}

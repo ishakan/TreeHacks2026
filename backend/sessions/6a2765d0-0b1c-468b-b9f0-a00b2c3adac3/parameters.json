@@ -1,7 +1,0 @@
-{
-  "size": {
-    "value": 10,
-    "type": "number",
-    "description": "Side length of the cube"
-  }
-}

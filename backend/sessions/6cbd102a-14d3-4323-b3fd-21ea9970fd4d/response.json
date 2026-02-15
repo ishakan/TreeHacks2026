@@ -1,8 +1,0 @@
-{
-  "sceneGraph": {
-    "type": "sphere",
-    "radius": 3,
-    "color": "#4A90E2"
-  },
-  "markdown": "# Tiny Sphere\n\nA simple, tiny sphere perfect for basic 3D modeling exercises or as a component in larger assemblies.\n\n## Parameters\n\n- **radius**: Controls the size of the sphere (default: 3mm)\n- **$fn**: Controls surface smoothness by setting the number of fragments (default: 50)\n\n## Customization\n\nYou can adjust the `radius` parameter to make the sphere even tinier (e.g., 1-2mm) or slightly larger. Increase `$fn` for a smoother surface, or decrease it for faster rendering during development.\n\n## 3D Printing Notes\n\nThis tiny sphere is printable, though very small spheres (under 2mm) may be challenging depending on your printer's resolution. Consider:\n- Using a finer nozzle for very small prints\n- Adding support structures if needed\n- Scaling up slightly if the sphere is too small to handle"
-}

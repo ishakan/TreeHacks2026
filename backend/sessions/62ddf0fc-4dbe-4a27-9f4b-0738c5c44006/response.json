@@ -1,9 +1,0 @@
-{
-  "sceneGraph": {
-    "type": "cube",
-    "size": [10, 10, 10],
-    "center": true,
-    "color": "#4A90E2"
-  },
-  "markdown": "# Small Cube\n\nA simple 10×10×10 unit cube centered at the origin.\n\n## Parameters\n\n- **size**: Controls the dimensions of the cube. All three axes (width, height, depth) use the same value for a perfect cube.\n\n## Customization\n\nYou can adjust the `size` parameter to make the cube larger or smaller. The cube is centered at the origin, making it easy to combine with other shapes.\n\n## 3D Printing\n\nThis model is print-ready with no overhangs or support requirements. The small size makes it suitable for testing your 3D printer settings or as a building block for more complex designs."
-}

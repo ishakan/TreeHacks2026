@@ -39,3 +39,30 @@ class ParameterUpdateRequest(BaseModel):
 class ParameterResponse(BaseModel):
     parameters: dict[str, ParameterEntry]
     scadCode: str
+
+
+# ---------------------------------------------------------------------------
+# Blueprint workflow models
+# ---------------------------------------------------------------------------
+
+class BlueprintRequest(BaseModel):
+    description: str
+
+
+class BlueprintRefineRequest(BaseModel):
+    sessionId: str
+    feedback: str
+
+
+class BlueprintConfirmRequest(BaseModel):
+    sessionId: str
+
+
+class BlueprintDimension(BaseModel):
+    value: float | int
+    unit: str = "mm"
+    description: str
+
+
+class BlueprintDimensionUpdateRequest(BaseModel):
+    dimensions: dict[str, float | int]

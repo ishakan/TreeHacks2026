@@ -1,8 +1,0 @@
-{
-  "sceneGraph": {
-    "type": "sphere",
-    "radius": 5,
-    "color": "#4CAF50"
-  },
-  "markdown": "# Small Sphere\n\nA simple parametric sphere model with customizable radius.\n\n## Parameters\n\n- **radius** (default: 5): Controls the size of the sphere\n- **$fn** (default: 50): Controls the smoothness of the sphere surface. Higher values create smoother spheres but take longer to render.\n\n## Customization\n\nYou can easily adjust the sphere size by modifying the `radius` parameter. For a very smooth sphere suitable for 3D printing, increase `$fn` to 100 or higher. For faster preview rendering, you can reduce `$fn` to 20-30.\n\n## 3D Printing Notes\n\nThis sphere is structurally sound and will print well on most 3D printers. You may want to:\n- Add support material if your printer requires it\n- Scale the model to your desired size\n- Ensure the radius is appropriate for your printer's capabilities"
-}

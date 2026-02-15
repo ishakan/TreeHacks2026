@@ -1,5 +1,0 @@
-claude-agent-sdk
-fastapi
-uvicorn[standard]
-python-dotenv
-pydantic

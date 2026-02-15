@@ -46,8 +46,23 @@ IMPORTANT: Start by reading the file "openscad_docs.json" in your working direct
 using the Read tool. This file contains a complete index of all available OpenSCAD \
 operations with categories, syntax, parameters and examples.
 
-After reading the docs, respond with ONLY a valid JSON object (no markdown fences, \
-no extra text):
+If the user's request mentions a composite image or geometry data file, read those \
+files using the Read tool BEFORE planning. The composite image is a 4-panel \
+annotated image showing:
+  - Panel 1 (top-left):  Original image of the object
+  - Panel 2 (top-right): Contour hierarchy — WHITE = additive geometry (union), \
+RED = subtractive geometry (difference)
+  - Panel 3 (bottom-left): Polygon approximations with shape labels
+  - Panel 4 (bottom-right): Symmetry axes (yellow) and bounding boxes
+
+Use these visual cues to plan:
+- White contours at even nesting depth → union() / main body primitives
+- Red contours at odd nesting depth → difference() / holes / cuts
+- Symmetry axes → consider mirror() operations
+- Shape labels (rectangle, circle, etc.) → select matching OpenSCAD primitives
+
+After reading the docs (and any provided image/geometry data), respond with ONLY \
+a valid JSON object (no markdown fences, no extra text):
 
 {
   "approach": "Brief description of the modeling approach",
@@ -70,21 +85,41 @@ transforms, math functions, special variables, etc.
 """
 
 CODING_SYSTEM_PROMPT = """\
-You are a 3D modeling assistant that generates OpenSCAD code and a JSON scene graph \
-for browser rendering.
+You are a 3D modeling assistant that generates OpenSCAD code.
 
 Start by reading "plan.json" in your working directory using the Read tool. \
 It contains the modeling plan you must follow.
 
-Then create THREE files using the Write tool:
+If a composite image file exists in your working directory (composite.png), \
+read it using the Read tool BEFORE writing code. It is a 4-panel annotated image:
 
-1. **model.scad** — Valid OpenSCAD code with parameterized variable declarations at \
-the very top. Example:
+PANEL GUIDE:
+- Top-left (Panel 1): Original photo of the object (no background).
+- Top-right (Panel 2): Contour hierarchy map.
+  WHITE/LIGHT contours = additive geometry (union / main body).
+  RED/BLUE contours = subtractive geometry (difference / holes / cuts).
+  Nesting depth maps directly to OpenSCAD boolean operations.
+- Bottom-left (Panel 3): Polygon-approximated contours. Text labels show shape \
+classifications (rectangle, circle, hexagon, etc.).
+- Bottom-right (Panel 4): Full annotation with symmetry axes (YELLOW lines) and \
+bounding boxes (BLUE = major features, GREEN = minor).
+
+BOOLEAN OPERATION MAPPING:
+- White outer contour = main body primitive (cube, cylinder, etc.)
+- Red inner contours = subtract these from the body (difference)
+- White within red = add back into the subtracted region (union inside difference)
+This nesting maps directly to OpenSCAD's difference() { } and union() { } syntax.
+
+Create TWO files using the Write tool:
+
+1. **model.scad** — Valid OpenSCAD code. Declare ALL dimensions as named variables \
+at the very top with range hints in comments: // [min:step:max] Description
+Example:
 ```
 // Parameters
-width = 10;
-height = 20;
-hole_radius = 3;
+width = 10; // [5:1:50] Width of the base
+height = 20; // [10:1:100] Total height
+hole_radius = 3; // [1:0.5:10] Hole radius
 $fn = 50;
 
 // Model
@@ -97,47 +132,20 @@ difference() {
 2. **parameters.json** — Structured metadata about each parameter:
 ```json
 {
-  "width": { "value": 10, "type": "number", "description": "Width of the base cube" },
+  "width": { "value": 10, "type": "number", "description": "Width of the base" },
   "height": { "value": 20, "type": "number", "description": "Total height" }
 }
 ```
 
-3. **response.json** — Contains the scene graph and markdown explanation:
-```json
-{
-  "sceneGraph": { ... },
-  "markdown": "# Model Title\\n..."
-}
-```
-
-## Scene Graph Format
-
-The scene graph uses Y-up coordinates (Three.js convention).
-
-### Primitive Nodes
-- **cube**: { "type": "cube", "size": [w, h, d], "center": true }
-- **sphere**: { "type": "sphere", "radius": number }
-- **cylinder**: { "type": "cylinder", "radiusTop": n, "radiusBottom": n, "height": n }
-- **cone**: { "type": "cone", "radius": n, "height": n }
-- **torus**: { "type": "torus", "radius": n, "tube": n }
-- **linear_extrude**: { "type": "linear_extrude", "height": n, "shape": [[x,y], ...] }
-- **rotate_extrude**: { "type": "rotate_extrude", "points": [[x,y], ...], "segments": n }
-
-### Boolean Nodes
-- **union**: { "type": "union", "children": [node, ...] }
-- **difference**: { "type": "difference", "children": [node, ...] }
-- **intersection**: { "type": "intersection", "children": [node, ...] }
-
-### Common Properties (all nodes)
-- **color**: optional CSS color string
-- **transforms**: optional { "translate": [x,y,z], "rotate": [x,y,z], "scale": [x,y,z] }
-
-## Important Rules
-1. Scene graph uses Y-up coordinates; OpenSCAD code uses Z-up.
-2. Keep models reasonably sized (1-50 units).
-3. The "markdown" should explain the model and how to customize parameters.
-4. IMPORTANT: ensure structural integrity for 3D printing.
-5. Write ALL three files. Do not skip any.
+Important rules:
+1. Normalise the longest visible dimension to 100mm. Estimate all other \
+dimensions proportionally from the image or description.
+2. Use Panel 3 (polygon approx) to identify the geometric primitives.
+3. Use Panel 2 (hierarchy) to determine the boolean operations between them.
+4. Use Panel 4 symmetry axes to apply mirror() where appropriate.
+5. Ensure structural integrity for 3D printing.
+6. Write BOTH files. Do not skip any.
+7. Output ONLY valid .scad code in model.scad — no markdown, no explanation.
 """
 
 
@@ -189,6 +197,26 @@ class AgentError(Exception):
 
 
 # ---------------------------------------------------------------------------
+# Image preprocessing
+# ---------------------------------------------------------------------------
+
+def _run_preprocessing(image_path: str, session_dir: Path) -> dict | None:
+    """Run the contour-annotation preprocessing pipeline on the reference image.
+
+    Returns a dict with composite_path, geometry_path, geometry_text,
+    or None if preprocessing fails (agents fall back to the raw image).
+    """
+    try:
+        from preprocessing.main import preprocess_image
+        result = preprocess_image(image_path, str(session_dir))
+        print(f"[preprocess] Done — {len(result.get('geometry_text', '').split(chr(10)))} geometry lines")
+        return result
+    except Exception as exc:
+        print(f"[preprocess] Image preprocessing failed: {exc} — agents will use raw image")
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Plan parsing
 # ---------------------------------------------------------------------------
 
@@ -235,12 +263,15 @@ async def run_pipeline(
 ) -> AsyncIterator[dict[str, Any]]:
     """Async generator that yields SSE-ready dicts for a full generate run."""
 
+    # ── Image preprocessing (before agents) ────────────────────────────
+    preproc: dict | None = None
+    if image_path:
+        preproc = _run_preprocessing(image_path, session_dir)
+
     # ── Phase 1: Planning ──────────────────────────────────────────────
     yield {"type": "plan_start"}
 
-    plan_prompt = description
-    if image_path:
-        plan_prompt = f"[An image has been provided at {image_path}]\n\n{description}"
+    plan_prompt = _build_plan_prompt(description, image_path, preproc, session_dir)
 
     planning_options = ClaudeAgentOptions(
         system_prompt=PLANNING_SYSTEM_PROMPT,
@@ -292,9 +323,7 @@ async def run_pipeline(
     # ── Phase 2: Coding ────────────────────────────────────────────────
     yield {"type": "code_start"}
 
-    coding_prompt = description
-    if image_path:
-        coding_prompt = f"[Reference image: {image_path}]\n\n{description}"
+    coding_prompt = _build_coding_prompt(description, image_path, preproc, session_dir)
 
     coding_options = ClaudeAgentOptions(
         system_prompt=CODING_SYSTEM_PROMPT,
@@ -355,7 +384,26 @@ async def run_refinement(
 
     # Build context summary from existing files
     context = _build_context_summary(session_dir)
-    plan_prompt = f"{context}\n\nThe user wants to refine the model: \"{feedback}\""
+
+    # Check if preprocessed image data exists for this session
+    composite_path = session_dir / "composite.png"
+    geometry_path = session_dir / "geometry.json"
+    has_visual = composite_path.exists()
+
+    visual_hint = ""
+    if has_visual:
+        visual_hint = (
+            f"\n\nVisual analysis files are available in the session directory:\n"
+            f"- Annotated composite image: {composite_path}\n"
+            f"- Geometry data: {geometry_path}\n"
+            f"Read these with the Read tool if relevant to the refinement."
+        )
+
+    plan_prompt = (
+        f"{context}\n\n"
+        f"The user wants to refine the model: \"{feedback}\""
+        f"{visual_hint}"
+    )
 
     # ── Phase 1: Planning ──────────────────────────────────────────────
     yield {"type": "plan_start"}
@@ -418,8 +466,8 @@ async def run_refinement(
 
     refinement_prompt = (
         f"The user wants the following changes: {feedback}\n"
-        f"Read plan.json for the updated plan, then rewrite model.scad, "
-        f"parameters.json, and response.json accordingly."
+        f"Read plan.json for the updated plan, then rewrite model.scad "
+        f"and parameters.json accordingly."
     )
 
     coding_text = ""
@@ -501,6 +549,72 @@ def update_parameters(
 
 
 # ---------------------------------------------------------------------------
+# Prompt builders
+# ---------------------------------------------------------------------------
+
+def _build_plan_prompt(
+    description: str,
+    image_path: str | None,
+    preproc: dict | None,
+    session_dir: Path,
+) -> str:
+    """Build the prompt for the planning agent.
+
+    If preprocessing succeeded, includes paths to the composite image and
+    geometry data along with the pre-computed geometry text.
+    If preprocessing failed but an image exists, falls back to the raw path.
+    """
+    parts = [description]
+
+    if preproc:
+        parts.append(
+            f"\nVISUAL ANALYSIS (use Read tool to view these files):\n"
+            f"- Annotated composite image: {preproc['composite_path']}\n"
+            f"- Geometry data: {preproc['geometry_path']}\n"
+            f"\nPRE-COMPUTED GEOMETRY (extracted programmatically — treat as high confidence):\n"
+            f"{preproc['geometry_text']}"
+        )
+    elif image_path:
+        parts.append(
+            f"\nA reference image is available. Read it using the Read tool: {image_path}"
+        )
+
+    return "\n".join(parts)
+
+
+def _build_coding_prompt(
+    description: str,
+    image_path: str | None,
+    preproc: dict | None,
+    session_dir: Path,
+) -> str:
+    """Build the prompt for the coding agent.
+
+    Instructs the agent to read the composite image and geometry data,
+    and includes pre-computed geometry facts inline.
+    """
+    parts = [description]
+
+    if preproc:
+        parts.append(
+            f"\nIMPORTANT — VISUAL ANALYSIS FILES (read these with the Read tool "
+            f"BEFORE writing any code):\n"
+            f"- Annotated composite image: composite.png\n"
+            f"- Geometry data: geometry.json\n"
+            f"\nPRE-COMPUTED GEOMETRY (extracted programmatically — treat as high confidence):\n"
+            f"{preproc['geometry_text']}\n"
+            f"\nUse these annotations together with plan.json to produce accurate OpenSCAD code."
+        )
+    elif image_path:
+        parts.append(
+            f"\nA reference image is available. Read it using the Read tool: "
+            f"reference.png"
+        )
+
+    return "\n".join(parts)
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -508,7 +622,6 @@ def _assemble_result(session_dir: Path, coding_session_id: str | None) -> dict[s
     """Read the output files and assemble the SSE result payload."""
     scad_path = session_dir / "model.scad"
     params_path = session_dir / "parameters.json"
-    response_path = session_dir / "response.json"
 
     scad_code = scad_path.read_text() if scad_path.exists() else "// No SCAD code generated"
 
@@ -519,22 +632,12 @@ def _assemble_result(session_dir: Path, coding_session_id: str | None) -> dict[s
         except json.JSONDecodeError:
             pass
 
-    scene_graph: dict[str, Any] = {"type": "sphere", "radius": 2, "color": "#ff0000"}
-    markdown = ""
-    if response_path.exists():
-        try:
-            response = json.loads(response_path.read_text())
-            scene_graph = response.get("sceneGraph", scene_graph)
-            markdown = response.get("markdown", "")
-        except json.JSONDecodeError:
-            markdown = "# Error\n\nCould not parse response.json"
-
     return {
         "sessionId": session_dir.name,
         "result": {
             "scadCode": scad_code,
-            "sceneGraph": scene_graph,
-            "markdown": markdown,
+            "sceneGraph": {},
+            "markdown": "",
             "parameters": parameters,
         },
     }
@@ -553,14 +656,17 @@ def _build_context_summary(session_dir: Path) -> str:
         except (json.JSONDecodeError, AttributeError):
             pass
 
-    response_path = session_dir / "response.json"
-    if response_path.exists():
+    scad_path = session_dir / "model.scad"
+    if scad_path.exists():
         try:
-            response = json.loads(response_path.read_text())
-            md = response.get("markdown", "")
-            title = md.split("\n")[0] if md else "Unknown model"
-            parts.append(f"Current model: {title}")
-        except (json.JSONDecodeError, AttributeError):
+            scad = scad_path.read_text()
+            # Extract first comment line as a title hint
+            for line in scad.split("\n"):
+                line = line.strip()
+                if line.startswith("//") and len(line) > 3:
+                    parts.append(f"Current model: {line}")
+                    break
+        except Exception:
             pass
 
     return ". ".join(parts) if parts else "Existing model with prior context."

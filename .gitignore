@@ -13,7 +13,9 @@ frontend/dist/
 # Generated files
 outputs/
 uploads/
-preprocessing/config/
+backend/preprocessing/config
+backend/test_sessions
+backend/sessions
 
 # Ruff cache
 .ruff_cache/

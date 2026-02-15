@@ -1,9 +1,0 @@
-{
-  "sceneGraph": {
-    "type": "cube",
-    "size": [30, 15, 20],
-    "center": true,
-    "color": "#4A90E2"
-  },
-  "markdown": "# Simple Box Model\n\nThis is a basic rectangular box created using a single cube primitive.\n\n## Dimensions\n\n- **Width**: 30 units (X-axis)\n- **Depth**: 20 units (Z-axis)\n- **Height**: 15 units (Y-axis)\n\n## Customization\n\nYou can adjust the following parameters to customize your box:\n\n- **width**: Controls the left-to-right dimension\n- **depth**: Controls the front-to-back dimension\n- **height**: Controls the vertical dimension\n\n## 3D Printing Notes\n\nThis model is print-ready and structurally sound. The box is centered at the origin, making it easy to position. For 3D printing:\n\n- No support structures needed\n- Can be printed in any orientation\n- Recommended to print with the largest face on the build plate for stability\n\n## Use Cases\n\n- Container or storage box\n- Building block for more complex models\n- Base for adding features like holes, compartments, or lids"
-}
