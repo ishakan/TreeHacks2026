@@ -19,6 +19,7 @@ from claude_agent_sdk import (
     ClaudeAgentOptions,
     ResultMessage,
     TextBlock,
+    ToolUseBlock,
 )
 
 from agents import _safe_query, AgentError
@@ -33,12 +34,15 @@ BACKEND_DIR = Path(__file__).resolve().parent
 # ---------------------------------------------------------------------------
 
 BLUEPRINT_SYSTEM_PROMPT = """\
-You are a technical blueprint designer. Given a text description of a 3D object, \
-generate a self-contained HTML file with inline SVG showing orthographic views \
-and a companion JSON file with parametric dimensions.
+You are a technical blueprint designer. You MUST use tools to complete every task. \
+NEVER output file content as text in your response — always use the Write tool.
 
-Create TWO files using the Write tool. Use the EXACT absolute file paths \
-given in the user prompt.
+Workflow:
+1. Read the description file (path provided in the user prompt) using the Read tool.
+2. Write the HTML blueprint file using the Write tool.
+3. Write the dimensions JSON file using the Write tool.
+
+Use the EXACT absolute file paths given in the user prompt for all Write calls.
 
 1. **blueprint.html** — A self-contained HTML page with:
    - Inline SVG showing 3-4 orthographic views (front, side, top, and optionally isometric)
@@ -171,23 +175,29 @@ async def run_blueprint(
 
     html_path = session_dir / "blueprint.html"
     dims_path = session_dir / "blueprint_dimensions.json"
+    desc_path = session_dir / "description.txt"
+
+    # Write description to a file so the agent can Read it (primes tool-use mode)
+    desc_path.write_text(description)
 
     prompt = (
-        f"Create a technical blueprint for the following object:\n\n{description}\n\n"
+        f"Read the object description from: {desc_path}\n\n"
+        f"Then create a technical blueprint for the described object.\n\n"
         f"Write the HTML blueprint to: {html_path}\n"
         f"Write the dimensions JSON to: {dims_path}"
     )
 
     options = ClaudeAgentOptions(
         system_prompt=BLUEPRINT_SYSTEM_PROMPT,
-        allowed_tools=["Write"],
+        allowed_tools=["Read", "Write"],
         permission_mode="bypassPermissions",
         cwd=str(session_dir),
-        max_turns=8,
+        max_turns=12,
     )
 
     agent_text = ""
     char_count = 0
+    tool_use_count = 0
     blueprint_session_id: str | None = None
 
     try:
@@ -201,11 +211,26 @@ async def run_blueprint(
                             "type": "text_delta",
                             "text": block.text,
                         }
+                    elif isinstance(block, ToolUseBlock):
+                        tool_use_count += 1
+                        log.info("Blueprint agent tool call #%d: %s", tool_use_count, block.name)
             elif isinstance(message, ResultMessage):
                 blueprint_session_id = message.session_id
     except AgentError as exc:
         yield {"type": "error", "error": f"Blueprint agent failed: {exc}"}
         return
+
+    log.info(
+        "Blueprint agent finished: %d tool calls, %d text chars, files exist: html=%s dims=%s",
+        tool_use_count, char_count, html_path.exists(), dims_path.exists(),
+    )
+
+    # Save raw agent text for debugging
+    (session_dir / "agent_output.txt").write_text(agent_text)
+
+    # Fallback: if agent output HTML as text instead of using Write tool, extract and save
+    if not html_path.exists() and agent_text:
+        _extract_and_write_files(agent_text, html_path, dims_path)
 
     # Read generated files
     result = _assemble_blueprint_result(session_dir, blueprint_session_id)
@@ -232,11 +257,17 @@ async def refine_blueprint(
     html_path = session_dir / "blueprint.html"
     dims_path = session_dir / "blueprint_dimensions.json"
 
+    # Write feedback to a file so the agent reads it first (primes tool-use mode)
+    feedback_path = session_dir / "feedback.txt"
+    feedback_path.write_text(feedback)
+
     prompt = (
-        f"The user wants the following changes to the blueprint:\n\n{feedback}\n\n"
+        f"Read the user's feedback from: {feedback_path}\n"
         f"Read the existing blueprint: {html_path}\n"
-        f"Read the existing dimensions: {dims_path}\n"
-        f"Then rewrite both files with the requested changes."
+        f"Read the existing dimensions: {dims_path}\n\n"
+        f"Then rewrite both files with the requested changes.\n"
+        f"Write the updated HTML to: {html_path}\n"
+        f"Write the updated dimensions to: {dims_path}"
     )
 
     options = ClaudeAgentOptions(
@@ -244,12 +275,14 @@ async def refine_blueprint(
         allowed_tools=["Read", "Write"],
         permission_mode="bypassPermissions",
         cwd=str(session_dir),
-        max_turns=8,
+        max_turns=12,
     )
     if blueprint_session_id:
         options.resume = blueprint_session_id
 
+    agent_text = ""
     char_count = 0
+    tool_use_count = 0
     new_session_id: str | None = None
 
     try:
@@ -257,16 +290,32 @@ async def refine_blueprint(
             if isinstance(message, AssistantMessage):
                 for block in message.content:
                     if isinstance(block, TextBlock):
+                        agent_text += block.text
                         char_count += len(block.text)
                         yield {
                             "type": "text_delta",
                             "text": block.text,
                         }
+                    elif isinstance(block, ToolUseBlock):
+                        tool_use_count += 1
+                        log.info("Blueprint refine tool call #%d: %s", tool_use_count, block.name)
             elif isinstance(message, ResultMessage):
                 new_session_id = message.session_id
     except AgentError as exc:
         yield {"type": "error", "error": f"Blueprint refinement failed: {exc}"}
         return
+
+    log.info(
+        "Blueprint refine finished: %d tool calls, %d text chars, html=%s dims=%s",
+        tool_use_count, char_count, html_path.exists(), dims_path.exists(),
+    )
+
+    # Save raw agent text for debugging
+    (session_dir / "agent_output.txt").write_text(agent_text)
+
+    # Fallback: extract from text if Write tool wasn't used
+    if not html_path.exists() and agent_text:
+        _extract_and_write_files(agent_text, html_path, dims_path)
 
     _update_meta(
         session_dir,
@@ -498,6 +547,55 @@ def update_scad_parameters(
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+def _extract_and_write_files(
+    agent_text: str,
+    html_path: Path,
+    dims_path: Path,
+) -> None:
+    """Fallback: extract HTML and dimensions JSON from agent text output.
+
+    The agent sometimes outputs file content as markdown-fenced text blocks
+    instead of calling the Write tool. This function extracts and saves them.
+    """
+    log.warning("Write tool was not used — attempting to extract files from agent text output")
+
+    # Extract HTML from ```html ... ``` fences or raw <!DOCTYPE ...
+    html_match = re.search(
+        r"```html\s*\n([\s\S]*?)```",
+        agent_text,
+    )
+    if html_match:
+        html_content = html_match.group(1).strip()
+        html_path.write_text(html_content)
+        log.info("Extracted HTML from markdown fence (%d chars)", len(html_content))
+    else:
+        # Try raw HTML block (<!DOCTYPE or <html)
+        html_match = re.search(
+            r"(<!DOCTYPE html>[\s\S]*?</html>)",
+            agent_text,
+            re.IGNORECASE,
+        )
+        if html_match:
+            html_content = html_match.group(1).strip()
+            html_path.write_text(html_content)
+            log.info("Extracted raw HTML block (%d chars)", len(html_content))
+
+    # Extract JSON from ```json ... ``` fences
+    json_blocks = re.findall(r"```json\s*\n([\s\S]*?)```", agent_text)
+    for block in json_blocks:
+        try:
+            parsed = json.loads(block.strip())
+            # Detect dimensions JSON: values are dicts with "value" key
+            if isinstance(parsed, dict) and any(
+                isinstance(v, dict) and "value" in v for v in parsed.values()
+            ):
+                dims_path.write_text(json.dumps(parsed, indent=2))
+                log.info("Extracted dimensions JSON (%d params)", len(parsed))
+                break
+        except json.JSONDecodeError:
+            continue
+
 
 def _read_meta(session_dir: Path) -> dict:
     """Read session meta.json, returning empty dict if missing."""

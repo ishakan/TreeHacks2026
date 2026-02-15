@@ -23,3 +23,5 @@ backend/sessions
 # IDE / tools
 .claude/
 .DS_Store
+
+test_segment.py

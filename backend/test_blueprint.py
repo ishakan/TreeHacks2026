@@ -48,7 +48,7 @@ def stream_sse(method: str, path: str, body: dict | None = None) -> dict | None:
     session_id: str | None = None
     completed_type: str | None = None
 
-    with httpx.Client(timeout=httpx.Timeout(300.0, connect=10.0)) as client:
+    with httpx.Client(timeout=httpx.Timeout(connect=10.0, read=None, write=30.0, pool=10.0)) as client:
         with client.stream(method, url, json=body) as resp:
             if resp.status_code != 200:
                 print(f"{RED}HTTP {resp.status_code}: {resp.read().decode()}{RESET}")
@@ -120,6 +120,8 @@ def fetch_and_save(session_id: str) -> tuple[Path, dict]:
         (d / "blueprint_dimensions.json").write_text(
             json.dumps(data["dimensions"], indent=2)
         )
+    if data.get("agentOutput"):
+        (d / "agent_output.txt").write_text(data["agentOutput"])
     if data.get("scadCode"):
         (d / "model.scad").write_text(data["scadCode"])
     if data.get("parameters"):
