@@ -6,3 +6,7 @@ numpy
 sse-starlette
 httpx
 python-dotenv
+trimesh
+google-generativeai
+anthropic
+fal-client

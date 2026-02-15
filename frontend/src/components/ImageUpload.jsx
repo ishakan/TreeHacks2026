@@ -2,30 +2,49 @@ import { useRef, useState } from 'react'
 
 const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_SIZE = 10 * 1024 * 1024
+const MAX_IMAGES = 10
 
-export default function ImageUpload({ file, preview, disabled, onFileSelect, onRemove }) {
+export default function ImageUpload({ files, previews, disabled, onFilesSelect, onRemove }) {
   const inputRef = useRef(null)
   const [dragover, setDragover] = useState(false)
 
-  const processFile = (f) => {
-    if (!ACCEPTED.includes(f.type)) {
-      alert('Please upload a JPEG, PNG, or WebP image.')
-      return
+  const processFiles = (fileList) => {
+    const incoming = Array.from(fileList)
+    const validFiles = []
+    const validUrls = []
+
+    for (const f of incoming) {
+      if (!ACCEPTED.includes(f.type)) {
+        alert('Please upload a JPEG, PNG, or WebP image.')
+        continue
+      }
+      if (f.size > MAX_SIZE) {
+        alert('File too large (max 10 MB).')
+        continue
+      }
+      validFiles.push(f)
+      validUrls.push(URL.createObjectURL(f))
     }
-    if (f.size > MAX_SIZE) {
-      alert('File too large (max 10 MB).')
-      return
+
+    if (validFiles.length === 0) return
+
+    const newFiles = [...files, ...validFiles].slice(0, MAX_IMAGES)
+    const newPreviews = [...previews, ...validUrls].slice(0, MAX_IMAGES)
+
+    // Revoke URLs for any extras that got cut off
+    const kept = newFiles.length - files.length
+    for (let i = kept; i < validUrls.length; i++) {
+      URL.revokeObjectURL(validUrls[i])
     }
-    const url = URL.createObjectURL(f)
-    onFileSelect(f, url)
+
+    onFilesSelect(newFiles, newPreviews)
   }
 
   const handleDrop = (e) => {
     e.preventDefault()
     setDragover(false)
     if (disabled) return
-    const f = e.dataTransfer.files[0]
-    if (f) processFile(f)
+    processFiles(e.dataTransfer.files)
   }
 
   const handleDragOver = (e) => {
@@ -38,15 +57,14 @@ export default function ImageUpload({ file, preview, disabled, onFileSelect, onR
   }
 
   const handleChange = (e) => {
-    const f = e.target.files[0]
-    if (f) processFile(f)
+    processFiles(e.target.files)
     e.target.value = ''
   }
 
-  const handleRemove = (e) => {
+  const handleRemove = (e, index) => {
     e.stopPropagation()
-    if (preview) URL.revokeObjectURL(preview)
-    onRemove()
+    if (previews[index]) URL.revokeObjectURL(previews[index])
+    onRemove(index)
   }
 
   return (
@@ -61,17 +79,27 @@ export default function ImageUpload({ file, preview, disabled, onFileSelect, onR
         ref={inputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp"
+        multiple
         onChange={handleChange}
         style={{ display: 'none' }}
       />
 
-      {preview ? (
-        <div className="upload-preview">
-          <img src={preview} alt="Preview" />
-          {!disabled && (
-            <button className="remove-btn" onClick={handleRemove}>
-              ×
-            </button>
+      {previews.length > 0 ? (
+        <div className="upload-previews" onClick={(e) => e.stopPropagation()}>
+          {previews.map((url, i) => (
+            <div key={i} className="upload-preview-thumb">
+              <img src={url} alt={`Preview ${i + 1}`} />
+              {!disabled && (
+                <button className="remove-btn" onClick={(e) => handleRemove(e, i)}>
+                  ×
+                </button>
+              )}
+            </div>
+          ))}
+          {previews.length < MAX_IMAGES && !disabled && (
+            <div className="upload-add-more" onClick={handleClick}>
+              <span>+</span>
+            </div>
           )}
         </div>
       ) : (
@@ -80,7 +108,7 @@ export default function ImageUpload({ file, preview, disabled, onFileSelect, onR
           <p>
             Drag & drop or <strong>click to upload</strong>
           </p>
-          <p>JPEG, PNG, or WebP (max 10 MB)</p>
+          <p>JPEG, PNG, or WebP (max 10 MB, up to {MAX_IMAGES} images)</p>
         </>
       )}
     </div>

@@ -14,11 +14,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sse_starlette.sse import EventSourceResponse
 from PIL import Image
+import fal_client
 import httpx
 import io
 import json
-import base64
-import time
+import re
+import subprocess
+from pydantic import BaseModel
+
+from glb_editor import run_glb_edit
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -33,11 +37,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Global state ──────────────────────────────────────────────────────
-REPLICATE_API_TOKEN = os.environ.get("REPLICATE_API_TOKEN", "")
-REPLICATE_MODEL = "firtoz/trellis"
+# ── Config ───────────────────────────────────────────────────────────
+os.environ.setdefault("FAL_KEY", os.environ.get("FAL_KEY", ""))
 
-jobs: dict = {}
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+MAX_IMAGE_DIM = 4096  # Fal.AI max input dimension
+ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 OUTPUT_DIR = Path("outputs")
 OUTPUT_DIR.mkdir(exist_ok=True)
@@ -45,11 +51,18 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
-ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
+# ── Global state ─────────────────────────────────────────────────────
+jobs: dict = {}
 
 
-# ── Job helpers ──────────────────────────────────────────────────────
+# ── Request models ───────────────────────────────────────────────────
+class EditModelRequest(BaseModel):
+    glb_filename: str
+    instruction: str
+    history: list[str] = []
+
+
+# ── Fal.AI generation ────────────────────────────────────────────────
 def new_job() -> dict:
     job = {
         "id": str(uuid.uuid4()),
@@ -63,120 +76,71 @@ def new_job() -> dict:
     return job
 
 
-def replicate_api(method, path, **kwargs):
-    """Direct Replicate HTTP API call."""
-    headers = {
-        "Authorization": f"Bearer {REPLICATE_API_TOKEN}",
-        "Content-Type": "application/json",
-        "Prefer": "wait",
-    }
-    with httpx.Client(timeout=300) as client:
-        resp = client.request(
-            method,
-            f"https://api.replicate.com/v1/{path}",
-            headers=headers,
-            **kwargs,
-        )
-        resp.raise_for_status()
-        return resp.json()
-
-
-def run_replicate(job_id: str, image_bytes: bytes, content_type: str):
-    """Run Replicate TRELLIS in a background thread via HTTP API."""
+def run_fal(job_id: str, upload_paths: list[Path]):
+    """Run Fal.AI TRELLIS-2 in a background thread."""
     job = jobs[job_id]
     try:
         job["status"] = "processing"
-        job["progress"] = 10
-        job["message"] = "Uploading to Replicate..."
+        job["progress"] = 5
+        job["message"] = "Uploading images to Fal CDN..."
 
-        # Encode image as data URI
-        b64 = base64.b64encode(image_bytes).decode("utf-8")
-        data_uri = f"data:{content_type};base64,{b64}"
+        # Upload each image to Fal CDN
+        fal_urls = []
+        for i, path in enumerate(upload_paths):
+            url = fal_client.upload_file(str(path))
+            fal_urls.append(url)
+            job["progress"] = 5 + int(15 * (i + 1) / len(upload_paths))
+            logger.info(f"Uploaded {path.name} → {url}")
 
         job["progress"] = 20
-        job["message"] = "Running TRELLIS on GPU..."
+        job["message"] = "Running TRELLIS-2 on GPU..."
 
-        # Get latest version of the model
-        model_info = replicate_api("GET", f"models/{REPLICATE_MODEL}")
-        latest_version = model_info["latest_version"]["id"]
-        logger.info(f"Using model version: {latest_version}")
+        # Choose endpoint based on image count
+        if len(fal_urls) == 1:
+            model_id = "fal-ai/trellis-2"
+            arguments = {"image_url": fal_urls[0]}
+        else:
+            model_id = "fal-ai/trellis-2/multi"
+            arguments = {"image_urls": fal_urls}
 
-        # Create prediction — model expects "images" (array of URIs)
-        prediction = replicate_api(
-            "POST",
-            "predictions",
-            json={
-                "version": latest_version,
-                "input": {
-                    "images": [data_uri],
-                    "generate_color": True,
-                    "generate_model": True,
-                    "texture_size": 1024,
-                    "mesh_simplify": 0.95,
-                    "ss_sampling_steps": 12,
-                    "slat_sampling_steps": 12,
-                    "ss_guidance_strength": 7.5,
-                    "slat_guidance_strength": 3.0,
-                },
-            },
-        )
+        logger.info(f"Submitting to {model_id} with {len(fal_urls)} image(s)")
 
-        pred_id = prediction["id"]
-        logger.info(f"Prediction created: {pred_id}")
+        # Submit and poll
+        handler = fal_client.submit(model_id, arguments=arguments)
 
-        # Poll for completion
-        while prediction["status"] not in ("succeeded", "failed", "canceled"):
-            time.sleep(2)
-            prediction = replicate_api("GET", f"predictions/{pred_id}")
-            status = prediction["status"]
-            logger.info(f"Prediction {pred_id}: {status}")
+        for event in handler.iter_events(with_logs=True):
+            if isinstance(event, fal_client.InProgress):
+                job["progress"] = min(job["progress"] + 3, 80)
+                if hasattr(event, "logs") and event.logs:
+                    last_log = event.logs[-1]
+                    log_msg = last_log.get("message", "") if isinstance(last_log, dict) else str(last_log)
+                    if log_msg:
+                        job["message"] = log_msg
+                        logger.info(f"Fal log: {log_msg}")
 
-            if status == "processing":
-                job["progress"] = min(job["progress"] + 5, 80)
-                job["message"] = "Generating 3D model on GPU..."
-
-        if prediction["status"] != "succeeded":
-            error = prediction.get("error", "Prediction failed")
-            raise RuntimeError(f"Replicate prediction failed: {error}")
+        result = handler.get()
+        logger.info(f"Fal result keys: {list(result.keys()) if isinstance(result, dict) else type(result)}")
 
         job["progress"] = 85
         job["message"] = "Downloading model..."
 
-        # Find GLB in output
-        output = prediction["output"]
+        # Extract GLB URL from result
         glb_url = None
-
-        if isinstance(output, dict):
-            # Try common keys
-            for key in ("model_file", "model", "mesh", "glb", "output"):
-                if key in output and output[key]:
-                    glb_url = output[key]
-                    break
-            if not glb_url:
-                # Take first URL-like value
-                for v in output.values():
-                    if isinstance(v, str) and ("http" in v):
-                        glb_url = v
-                        break
-        elif isinstance(output, list):
-            for item in output:
-                if isinstance(item, str) and (".glb" in item or "http" in item):
-                    glb_url = item
-                    break
-            if not glb_url and output:
-                glb_url = str(output[-1])
-        elif isinstance(output, str):
-            glb_url = output
+        if isinstance(result, dict):
+            if "model_glb" in result and isinstance(result["model_glb"], dict):
+                glb_url = result["model_glb"].get("url")
+            elif "model_glb" in result and isinstance(result["model_glb"], str):
+                glb_url = result["model_glb"]
+            elif "glb" in result:
+                glb_url = result["glb"] if isinstance(result["glb"], str) else result["glb"].get("url")
 
         if not glb_url:
-            logger.error(f"Unexpected output: {json.dumps(output, indent=2)}")
-            raise RuntimeError(f"Could not find model file in output: {output}")
+            logger.error(f"Unexpected Fal output: {json.dumps(result, indent=2, default=str)}")
+            raise RuntimeError(f"Could not find GLB URL in Fal output: {list(result.keys()) if isinstance(result, dict) else result}")
 
-        logger.info(f"Downloading from: {glb_url}")
+        logger.info(f"Downloading GLB from: {glb_url}")
 
-        # Download the model file
-        ext = ".glb" if ".glb" in glb_url else (".obj" if ".obj" in glb_url else ".glb")
-        model_path = OUTPUT_DIR / f"{job_id}{ext}"
+        model_path = OUTPUT_DIR / f"{job_id}.glb"
         with httpx.Client(timeout=120) as client:
             resp = client.get(glb_url)
             resp.raise_for_status()
@@ -205,35 +169,55 @@ async def health():
 
 @app.post("/api/upload")
 async def upload(
-    file: UploadFile = File(...),
+    files: list[UploadFile] = File(...),
     resolution: int = Query(default=512, ge=256, le=2048),
 ):
-    if file.content_type not in ALLOWED_TYPES:
-        raise HTTPException(400, f"Unsupported file type: {file.content_type}")
-
-    data = await file.read()
-    if len(data) > MAX_FILE_SIZE:
-        raise HTTPException(
-            400, f"File too large (max {MAX_FILE_SIZE // 1024 // 1024} MB)"
-        )
-
-    try:
-        Image.open(io.BytesIO(data))
-    except Exception:
-        raise HTTPException(400, "Could not decode image")
+    if len(files) > 10:
+        raise HTTPException(400, "Maximum 10 images allowed")
+    if len(files) == 0:
+        raise HTTPException(400, "At least one image is required")
 
     job = new_job()
+    upload_paths: list[Path] = []
 
-    # Persist the uploaded image to uploads/
     ext_map = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
-    ext = ext_map.get(file.content_type, ".bin")
-    upload_path = UPLOAD_DIR / f"{job['id']}{ext}"
-    upload_path.write_bytes(data)
-    logger.info(f"Saved upload → {upload_path} ({len(data)} bytes)")
+
+    for i, file in enumerate(files):
+        if file.content_type not in ALLOWED_TYPES:
+            raise HTTPException(400, f"Unsupported file type: {file.content_type}")
+
+        data = await file.read()
+        if len(data) > MAX_FILE_SIZE:
+            raise HTTPException(
+                400, f"File too large (max {MAX_FILE_SIZE // 1024 // 1024} MB)"
+            )
+
+        try:
+            img = Image.open(io.BytesIO(data))
+        except Exception:
+            raise HTTPException(400, f"Could not decode image #{i + 1}")
+
+        # Resize if either dimension exceeds Fal.AI limit
+        if img.width > MAX_IMAGE_DIM or img.height > MAX_IMAGE_DIM:
+            img.thumbnail((MAX_IMAGE_DIM, MAX_IMAGE_DIM), Image.LANCZOS)
+            logger.info(f"Resized image #{i + 1} to {img.width}x{img.height}")
+
+        ext = ext_map.get(file.content_type, ".bin")
+        upload_path = UPLOAD_DIR / f"{job['id']}_{i}{ext}"
+
+        # Save the (possibly resized) image
+        save_fmt = {"image/jpeg": "JPEG", "image/png": "PNG", "image/webp": "WEBP"}
+        fmt = save_fmt.get(file.content_type, "JPEG")
+        if fmt == "JPEG" and img.mode == "RGBA":
+            img = img.convert("RGB")
+        img.save(upload_path, format=fmt, quality=90)
+
+        upload_paths.append(upload_path)
+        logger.info(f"Saved upload → {upload_path} ({upload_path.stat().st_size} bytes)")
 
     thread = Thread(
-        target=run_replicate,
-        args=(job["id"], data, file.content_type),
+        target=run_fal,
+        args=(job["id"], upload_paths),
         daemon=True,
     )
     thread.start()
@@ -312,7 +296,46 @@ async def get_model(filename: str):
     return FileResponse(path, media_type="model/gltf-binary", filename=filename)
 
 
-# ── Uploaded images ───────────────────────────────────────────────────
+# ── Edit model ───────────────────────────────────────────────────────
+@app.post("/api/edit-model")
+async def edit_model(req: EditModelRequest):
+    """Edit a GLB model using the two-turn Claude pipeline."""
+    if not ANTHROPIC_API_KEY:
+        raise HTTPException(500, "ANTHROPIC_API_KEY not configured")
+
+    glb_path = OUTPUT_DIR / req.glb_filename
+    if not glb_path.exists() or not glb_path.name.endswith(".glb"):
+        raise HTTPException(404, f"Model not found: {req.glb_filename}")
+
+    try:
+        input_path = str(glb_path.resolve())
+
+        unique_id = uuid.uuid4().hex[:8]
+        base_name = re.sub(r"_edited_[0-9a-f]+$", "", glb_path.stem)
+        new_glb_filename = f"{base_name}_edited_{unique_id}.glb"
+        output_path = str((OUTPUT_DIR / new_glb_filename).resolve())
+
+        run_glb_edit(input_path, output_path, req.instruction, req.history, ANTHROPIC_API_KEY)
+
+        logger.info(f"Agent edit produced: {new_glb_filename}")
+
+        return {
+            "success": True,
+            "glb_filename": new_glb_filename,
+            "scad_code": None,
+            "message": f"Edit applied: {req.instruction}",
+        }
+
+    except subprocess.TimeoutExpired:
+        raise HTTPException(504, "Edit timed out")
+    except RuntimeError as e:
+        raise HTTPException(422, str(e))
+    except Exception as e:
+        logger.error(f"Edit model failed: {traceback.format_exc()}")
+        raise HTTPException(500, f"Edit failed: {str(e)}")
+
+
+# ── Uploaded images ──────────────────────────────────────────────────
 @app.get("/api/uploads")
 async def list_uploads():
     """List all saved upload images."""

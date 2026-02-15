@@ -4,8 +4,8 @@ import STLSliceViewer from './components/STLSliceViewer'
 import ControlPanel from './components/ControlPanel'
 
 export default function App() {
-  const [file, setFile] = useState(null)
-  const [preview, setPreview] = useState(null)
+  const [files, setFiles] = useState([])
+  const [previews, setPreviews] = useState([])
   const [resolution, setResolution] = useState(512)
   const [jobId, setJobId] = useState(null)
   const [status, setStatus] = useState('idle')
@@ -16,6 +16,15 @@ export default function App() {
   const [boundingBox, setBoundingBox] = useState(null)
   const [pastModels, setPastModels] = useState([])
   const [selectedModel, setSelectedModel] = useState('')
+
+  // Edit state
+  const [editHistory, setEditHistory] = useState([])
+  const [editInstruction, setEditInstruction] = useState('')
+  const [isEditing, setIsEditing] = useState(false)
+  const [editError, setEditError] = useState(null)
+  const [currentGlbFilename, setCurrentGlbFilename] = useState(null)
+  const [editElapsed, setEditElapsed] = useState(0)
+  const editTimerRef = useRef(null)
 
   // Clipping state
   const [clipEnabled, setClipEnabled] = useState({ x: false, y: false, z: false })
@@ -66,6 +75,11 @@ export default function App() {
               return url
             })
             setSelectedModel('')
+            setCurrentGlbFilename(`${jobId}.glb`)
+
+            setEditHistory([])
+            setEditInstruction('')
+            setEditError(null)
             fetchModels()
           })
           .catch(() => {
@@ -92,7 +106,7 @@ export default function App() {
   }, [jobId])
 
   const handleGenerate = async () => {
-    if (!file) return
+    if (files.length === 0) return
 
     setStatus('uploading')
     setError(null)
@@ -100,7 +114,9 @@ export default function App() {
     setMessage('Uploading...')
 
     const formData = new FormData()
-    formData.append('file', file)
+    for (const f of files) {
+      formData.append('files', f)
+    }
 
     try {
       const res = await fetch(`/api/upload?resolution=${resolution}`, {
@@ -136,9 +152,85 @@ export default function App() {
         if (prev) URL.revokeObjectURL(prev)
         return url
       })
+      setCurrentGlbFilename(filename)
+      setEditHistory([])
+      setEditInstruction('')
+      setEditError(null)
       setStatus('completed')
     } catch (err) {
       setError(err.message)
+    }
+  }
+
+  const handleApplyEdit = async () => {
+    if (!editInstruction.trim() || !currentGlbFilename) return
+    setIsEditing(true)
+    setEditError(null)
+    setEditElapsed(0)
+    const t0 = Date.now()
+    editTimerRef.current = setInterval(() => setEditElapsed(Date.now() - t0), 100)
+
+    try {
+      const res = await fetch('/api/edit-model', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          glb_filename: currentGlbFilename,
+          instruction: editInstruction.trim(),
+          history: editHistory,
+        }),
+      })
+
+      if (!res.ok) {
+        let msg = 'Edit failed'
+        try { const data = await res.json(); msg = data.detail || msg } catch {}
+        throw new Error(msg)
+      }
+
+      const data = await res.json()
+
+      // Load the new GLB into the viewer
+      const modelRes = await fetch(`/api/models/${data.glb_filename}`)
+      if (!modelRes.ok) throw new Error('Failed to load edited model')
+      const blob = await modelRes.blob()
+      const url = URL.createObjectURL(blob)
+      setStlUrl(prev => {
+        if (prev) URL.revokeObjectURL(prev)
+        return url
+      })
+
+      setCurrentGlbFilename(data.glb_filename)
+      setEditHistory(prev => [...prev, editInstruction.trim()])
+      setEditInstruction('')
+      fetchModels()
+    } catch (err) {
+      setEditError(err.message)
+    } finally {
+      clearInterval(editTimerRef.current)
+      setIsEditing(false)
+    }
+  }
+
+  const handleResetToOriginal = async () => {
+    // Determine original filename
+    const originalFilename = jobId ? `${jobId}.glb` : selectedModel
+    if (!originalFilename) return
+
+    try {
+      const res = await fetch(`/api/models/${originalFilename}`)
+      if (!res.ok) throw new Error('Failed to load original model')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      setStlUrl(prev => {
+        if (prev) URL.revokeObjectURL(prev)
+        return url
+      })
+      setCurrentGlbFilename(originalFilename)
+      setEditHistory([])
+      setEditInstruction('')
+      setEditError(null)
+    } catch (err) {
+      setEditError(err.message)
     }
   }
 
@@ -179,11 +271,14 @@ export default function App() {
         </h1>
 
         <ImageUpload
-          file={file}
-          preview={preview}
+          files={files}
+          previews={previews}
           disabled={isProcessing}
-          onFileSelect={(f, p) => { setFile(f); setPreview(p) }}
-          onRemove={() => { setFile(null); setPreview(null) }}
+          onFilesSelect={(f, p) => { setFiles(f); setPreviews(p) }}
+          onRemove={(index) => {
+            setFiles(prev => prev.filter((_, i) => i !== index))
+            setPreviews(prev => prev.filter((_, i) => i !== index))
+          }}
         />
 
         <div>
@@ -205,7 +300,7 @@ export default function App() {
         <button
           className="btn btn-primary"
           onClick={handleGenerate}
-          disabled={!file || isProcessing}
+          disabled={files.length === 0 || isProcessing}
         >
           {isProcessing ? (
             <><span className="spinner" />Generating...</>
@@ -262,6 +357,53 @@ export default function App() {
             <button className="btn btn-secondary" onClick={handleDownload}>
               Download GLB
             </button>
+
+            <div className="separator" />
+
+            <div className="edit-panel">
+              <div className="section-label">Edit Model with AI</div>
+              <textarea
+                className="edit-textarea"
+                placeholder="e.g. Make it 2x taller&#10;Add a hole in the center&#10;Round the edges"
+                value={editInstruction}
+                onChange={(e) => setEditInstruction(e.target.value)}
+                disabled={isEditing}
+                rows={3}
+              />
+              <div className="edit-actions">
+                <button
+                  className="btn btn-primary"
+                  onClick={handleApplyEdit}
+                  disabled={!editInstruction.trim() || isEditing}
+                >
+                  {isEditing ? (
+                    <><span className="spinner" />Editing... {(editElapsed / 1000).toFixed(1)}s</>
+                  ) : (
+                    'Apply Edit'
+                  )}
+                </button>
+                {editHistory.length > 0 && (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={handleResetToOriginal}
+                    disabled={isEditing}
+                  >
+                    Reset to Original
+                  </button>
+                )}
+              </div>
+              {editError && <div className="error-message">{editError}</div>}
+              {editHistory.length > 0 && (
+                <div>
+                  <div className="section-label">Edit History</div>
+                  <ol className="history-list">
+                    {editHistory.map((h, i) => (
+                      <li key={i}>{h}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>
@@ -279,7 +421,7 @@ export default function App() {
           />
         ) : (
           <div className="viewer-placeholder">
-            {isProcessing ? 'Generating model...' : 'Upload an image to get started'}
+            {isProcessing ? 'Generating model...' : 'Upload one or more images to get started'}
           </div>
         )}
       </div>
