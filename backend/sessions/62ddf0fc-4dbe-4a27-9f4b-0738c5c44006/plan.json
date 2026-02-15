@@ -1,0 +1,16 @@
+{
+  "approach": "Create a simple cube primitive with appropriate size parameter",
+  "steps": [
+    {
+      "description": "Create a cube with small dimensions",
+      "operations": [
+        "cube"
+      ]
+    }
+  ],
+  "selectedMethods": [
+    "cube"
+  ],
+  "complexity": "simple",
+  "notes": "A cube is the most basic 3D primitive in OpenSCAD. The 'center' parameter can optionally be used to center it at the origin."
+}

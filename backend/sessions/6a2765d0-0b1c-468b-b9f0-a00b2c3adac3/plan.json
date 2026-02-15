@@ -1,0 +1,16 @@
+{
+  "approach": "Create a simple cube primitive with a small size",
+  "steps": [
+    {
+      "description": "Create a cube with specified dimensions",
+      "operations": [
+        "cube"
+      ]
+    }
+  ],
+  "selectedMethods": [
+    "cube"
+  ],
+  "complexity": "simple",
+  "notes": "A basic 3D primitive requiring only the cube() function. Can optionally use the center parameter to position it at the origin."
+}

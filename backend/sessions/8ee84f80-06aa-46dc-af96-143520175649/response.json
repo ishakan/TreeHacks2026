@@ -1,0 +1,185 @@
+{
+  "sceneGraph": {
+    "type": "union",
+    "children": [
+      {
+        "type": "cube",
+        "size": [40, 3, 40],
+        "center": true,
+        "transforms": {
+          "translate": [0, 45, 0]
+        },
+        "color": "#D2691E"
+      },
+      {
+        "type": "cube",
+        "size": [2.5, 0, 2.5],
+        "center": true,
+        "transforms": {
+          "translate": [-17.75, 0, -17.75]
+        },
+        "color": "#D2691E"
+      },
+      {
+        "type": "cube",
+        "size": [3.5, 45, 3.5],
+        "center": true,
+        "transforms": {
+          "translate": [-17.75, 22.5, -17.75]
+        },
+        "color": "#D2691E"
+      },
+      {
+        "type": "cube",
+        "size": [2.5, 0, 2.5],
+        "center": true,
+        "transforms": {
+          "translate": [17.75, 0, -17.75]
+        },
+        "color": "#D2691E"
+      },
+      {
+        "type": "cube",
+        "size": [3.5, 45, 3.5],
+        "center": true,
+        "transforms": {
+          "translate": [17.75, 22.5, -17.75]
+        },
+        "color": "#D2691E"
+      },
+      {
+        "type": "cube",
+        "size": [2.5, 0, 2.5],
+        "center": true,
+        "transforms": {
+          "translate": [-17.75, 0, 17.75]
+        },
+        "color": "#D2691E"
+      },
+      {
+        "type": "cube",
+        "size": [3.5, 45, 3.5],
+        "center": true,
+        "transforms": {
+          "translate": [-17.75, 22.5, 17.75]
+        },
+        "color": "#D2691E"
+      },
+      {
+        "type": "cube",
+        "size": [2.5, 0, 2.5],
+        "center": true,
+        "transforms": {
+          "translate": [17.75, 0, 17.75]
+        },
+        "color": "#D2691E"
+      },
+      {
+        "type": "cube",
+        "size": [3.5, 45, 3.5],
+        "center": true,
+        "transforms": {
+          "translate": [17.75, 22.5, 17.75]
+        },
+        "color": "#D2691E"
+      },
+      {
+        "type": "cube",
+        "size": [3, 40, 3],
+        "center": true,
+        "transforms": {
+          "translate": [-16.25, 68, 17.75],
+          "rotate": [8, 0, 0]
+        },
+        "color": "#D2691E"
+      },
+      {
+        "type": "cube",
+        "size": [3, 40, 3],
+        "center": true,
+        "transforms": {
+          "translate": [16.25, 68, 17.75],
+          "rotate": [8, 0, 0]
+        },
+        "color": "#D2691E"
+      },
+      {
+        "type": "cube",
+        "size": [35, 1.5, 2],
+        "center": true,
+        "transforms": {
+          "translate": [0, 52, 17.75],
+          "rotate": [8, 0, 0]
+        },
+        "color": "#D2691E"
+      },
+      {
+        "type": "cube",
+        "size": [35, 1.5, 2],
+        "center": true,
+        "transforms": {
+          "translate": [0, 60, 17.75],
+          "rotate": [8, 0, 0]
+        },
+        "color": "#D2691E"
+      },
+      {
+        "type": "cube",
+        "size": [35, 1.5, 2],
+        "center": true,
+        "transforms": {
+          "translate": [0, 68, 17.75],
+          "rotate": [8, 0, 0]
+        },
+        "color": "#D2691E"
+      },
+      {
+        "type": "cube",
+        "size": [35, 1.5, 2],
+        "center": true,
+        "transforms": {
+          "translate": [0, 76, 17.75],
+          "rotate": [8, 0, 0]
+        },
+        "color": "#D2691E"
+      },
+      {
+        "type": "cube",
+        "size": [32, 1.8, 1.8],
+        "center": true,
+        "transforms": {
+          "translate": [0, 15, -17.75]
+        },
+        "color": "#D2691E"
+      },
+      {
+        "type": "cube",
+        "size": [32, 1.8, 1.8],
+        "center": true,
+        "transforms": {
+          "translate": [0, 15, 17.75]
+        },
+        "color": "#D2691E"
+      },
+      {
+        "type": "cube",
+        "size": [1.8, 1.8, 32],
+        "center": true,
+        "transforms": {
+          "translate": [-17.75, 15, 0]
+        },
+        "color": "#D2691E"
+      },
+      {
+        "type": "cube",
+        "size": [1.8, 1.8, 32],
+        "center": true,
+        "transforms": {
+          "translate": [17.75, 15, 0]
+        },
+        "color": "#D2691E"
+      }
+    ]
+  },
+  "markdown": "# Dining Chair\n\nA classic wooden dining chair with a ladder-back design, featuring tapered legs and horizontal support stretchers for structural stability.\n\n## Design Features\n\n- **Tapered Legs**: Four legs that taper from 3.5cm at the top to 2.5cm at the bottom, providing stability and an elegant aesthetic\n- **Ladder Back**: Four horizontal slats spaced evenly across the backrest, angled back 8° for comfort\n- **Support Stretchers**: Horizontal rails connecting the legs on all four sides for added strength and durability\n- **Standard Height**: Seat positioned at 45cm (standard dining chair height)\n\n## Customization Parameters\n\n### Seat Dimensions\n- **seat_width**: Adjust the width of the seat (default: 40cm)\n- **seat_depth**: Adjust the depth of the seat (default: 40cm)\n- **seat_thickness**: Change the thickness of the seat (default: 3cm)\n- **seat_height**: Modify the height from floor to seat top (default: 45cm)\n\n### Leg Configuration\n- **leg_top_size**: Width of legs at the top where they meet the seat (default: 3.5cm)\n- **leg_bottom_size**: Width of legs at the floor (default: 2.5cm)\n- **leg_height**: Total height of the legs (default: 45cm)\n\n### Backrest\n- **back_post_height**: Height of the back posts above the seat (default: 40cm)\n- **back_angle**: Backward lean angle of the backrest in degrees (default: 8°)\n- **num_slats**: Number of horizontal slats in the backrest (default: 4)\n- **slat_spacing**: Vertical distance between slats (default: 8cm)\n- **slat_width**: Width of the back slats (default: 35cm)\n- **slat_thickness**: Thickness of each slat (default: 1.5cm)\n\n### Support Structure\n- **stretcher_size**: Cross-sectional dimension of support rails (default: 1.8cm)\n- **stretcher_height_front**: Height of front/back stretchers (default: 15cm)\n- **stretcher_height_side**: Height of side stretchers (default: 15cm)\n- **stretcher_inset**: Distance stretchers are set back from outer edges (default: 4cm)\n\n## 3D Printing Notes\n\nThis model is designed with structural integrity in mind:\n- Tapered legs provide a stable base\n- Support stretchers prevent racking and add rigidity\n- All joints have adequate material thickness for strength\n- Consider printing in orientation that maximizes layer adhesion for load-bearing parts\n- Scale appropriately for your intended use (miniature vs full-size)\n\n## Suggested Modifications\n\n1. **Comfort**: Increase `back_angle` to 10-12° for a more relaxed seating position\n2. **Modern Look**: Reduce `leg_top_size` and `leg_bottom_size` to create more slender legs\n3. **Traditional Style**: Increase `num_slats` to 5-6 for a denser ladder-back pattern\n4. **Bar Stool**: Increase `seat_height` to 75cm and add higher stretchers for a counter-height stool"
+}

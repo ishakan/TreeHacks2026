@@ -1,0 +1,1007 @@
+{
+  "categories": [
+    "2D Primitives",
+    "3D Primitives",
+    "Transformations",
+    "Boolean Operations",
+    "Extrusions",
+    "Math Functions",
+    "Trigonometric Functions",
+    "String Functions",
+    "List Functions",
+    "Control Flow",
+    "Special Variables",
+    "Modules",
+    "Import/Export",
+    "Other"
+  ],
+  "entries": [
+    {
+      "name": "circle",
+      "category": "2D Primitives",
+      "summary": "Creates a 2D circle or regular polygon",
+      "syntax": "circle(r|d, $fn);",
+      "parameters": [
+        { "name": "r", "type": "number", "default": "1", "description": "Radius of the circle" },
+        { "name": "d", "type": "number", "default": "undefined", "description": "Diameter of the circle (alternative to r)" },
+        { "name": "$fn", "type": "number", "default": "0", "description": "Number of fragments (sides) for the circle" }
+      ],
+      "description": "Creates a circle at the origin. Use $fn to create regular polygons (e.g., $fn=6 for hexagon). Must be used with linear_extrude or rotate_extrude to create 3D objects.",
+      "example": "circle(r=10);\ncircle(d=20, $fn=6); // hexagon"
+    },
+    {
+      "name": "square",
+      "category": "2D Primitives",
+      "summary": "Creates a 2D rectangle or square",
+      "syntax": "square(size, center);",
+      "parameters": [
+        { "name": "size", "type": "number | [x,y]", "default": "1", "description": "Size as single number or [width, height]" },
+        { "name": "center", "type": "boolean", "default": "false", "description": "Center the square at the origin" }
+      ],
+      "description": "Creates a square or rectangle in the XY plane. When center is false, one corner is at the origin.",
+      "example": "square(10);\nsquare([20, 10], center=true);"
+    },
+    {
+      "name": "polygon",
+      "category": "2D Primitives",
+      "summary": "Creates a 2D polygon from a list of points",
+      "syntax": "polygon(points, paths, convexity);",
+      "parameters": [
+        { "name": "points", "type": "[[x,y], ...]", "default": "required", "description": "List of 2D points" },
+        { "name": "paths", "type": "[[int, ...], ...]", "default": "undefined", "description": "List of point index paths defining outlines and holes" },
+        { "name": "convexity", "type": "number", "default": "1", "description": "Maximum number of front-back crossings" }
+      ],
+      "description": "Creates an arbitrary 2D polygon. Points define vertices, paths define which points to connect. Without paths, all points are connected in order. Multiple paths can define holes.",
+      "example": "polygon(points=[[0,0],[100,0],[130,50],[30,50]]);\npolygon(points=[[0,0],[10,0],[10,10],[0,10]], paths=[[0,1,2,3]]);"
+    },
+    {
+      "name": "text",
+      "category": "2D Primitives",
+      "summary": "Creates 2D text geometry",
+      "syntax": "text(text, size, font, halign, valign, spacing, direction, language, script, $fn);",
+      "parameters": [
+        { "name": "text", "type": "string", "default": "required", "description": "The text string to render" },
+        { "name": "size", "type": "number", "default": "10", "description": "Font size in points" },
+        { "name": "font", "type": "string", "default": "\"Liberation Sans\"", "description": "Font name and style" },
+        { "name": "halign", "type": "string", "default": "\"left\"", "description": "Horizontal alignment: left, center, right" },
+        { "name": "valign", "type": "string", "default": "\"baseline\"", "description": "Vertical alignment: top, center, baseline, bottom" },
+        { "name": "spacing", "type": "number", "default": "1", "description": "Character spacing factor" }
+      ],
+      "description": "Creates 2D text as geometry. Must be extruded (linear_extrude) to create 3D text. Uses fonts available on the system.",
+      "example": "linear_extrude(height=2)\n  text(\"Hello\", size=20, halign=\"center\");"
+    },
+    {
+      "name": "cube",
+      "category": "3D Primitives",
+      "summary": "Creates a cube or rectangular prism",
+      "syntax": "cube(size, center);",
+      "parameters": [
+        { "name": "size", "type": "number | [x,y,z]", "default": "1", "description": "Dimensions as single number or [width, depth, height]" },
+        { "name": "center", "type": "boolean", "default": "false", "description": "Center the cube at the origin" }
+      ],
+      "description": "Creates a cube or rectangular prism in the first octant. When center is true, the cube is centered at the origin. A single number creates a cube with equal sides.",
+      "example": "cube(10);\ncube([10, 20, 30], center=true);"
+    },
+    {
+      "name": "sphere",
+      "category": "3D Primitives",
+      "summary": "Creates a sphere centered at the origin",
+      "syntax": "sphere(r|d, $fn, $fa, $fs);",
+      "parameters": [
+        { "name": "r", "type": "number", "default": "1", "description": "Radius of the sphere" },
+        { "name": "d", "type": "number", "default": "undefined", "description": "Diameter of the sphere (alternative to r)" },
+        { "name": "$fn", "type": "number", "default": "0", "description": "Number of fragments for the sphere" }
+      ],
+      "description": "Creates a sphere centered at the origin. Use $fn to control the resolution (number of facets). Higher $fn values produce smoother spheres but increase render time.",
+      "example": "sphere(r=10);\nsphere(d=20, $fn=100);"
+    },
+    {
+      "name": "cylinder",
+      "category": "3D Primitives",
+      "summary": "Creates a cylinder, cone, or truncated cone",
+      "syntax": "cylinder(h, r|d, r1|d1, r2|d2, center, $fn);",
+      "parameters": [
+        { "name": "h", "type": "number", "default": "1", "description": "Height of the cylinder" },
+        { "name": "r", "type": "number", "default": "1", "description": "Radius of the cylinder (both top and bottom)" },
+        { "name": "r1", "type": "number", "default": "undefined", "description": "Radius at the bottom" },
+        { "name": "r2", "type": "number", "default": "undefined", "description": "Radius at the top" },
+        { "name": "d", "type": "number", "default": "undefined", "description": "Diameter (alternative to r)" },
+        { "name": "center", "type": "boolean", "default": "false", "description": "Center along the Z axis" },
+        { "name": "$fn", "type": "number", "default": "0", "description": "Number of fragments" }
+      ],
+      "description": "Creates a cylinder along the Z axis. Use r1/r2 for different top and bottom radii (cone or truncated cone). When center is false, the base sits on the XY plane.",
+      "example": "cylinder(h=10, r=5);\ncylinder(h=20, r1=10, r2=5, center=true);\ncylinder(h=10, r=5, $fn=6); // hexagonal prism"
+    },
+    {
+      "name": "polyhedron",
+      "category": "3D Primitives",
+      "summary": "Creates a 3D solid from vertices and faces",
+      "syntax": "polyhedron(points, faces, convexity);",
+      "parameters": [
+        { "name": "points", "type": "[[x,y,z], ...]", "default": "required", "description": "List of 3D vertices" },
+        { "name": "faces", "type": "[[int, ...], ...]", "default": "required", "description": "List of faces as point index lists (counter-clockwise from outside)" },
+        { "name": "convexity", "type": "number", "default": "1", "description": "Maximum number of front-back crossings" }
+      ],
+      "description": "Creates an arbitrary 3D solid from vertices and faces. Face vertices must be ordered counter-clockwise when viewed from outside. All faces must form a closed solid (manifold).",
+      "example": "polyhedron(\n  points=[[0,0,0],[10,0,0],[10,10,0],[0,10,0],[5,5,10]],\n  faces=[[0,1,2,3],[0,1,4],[1,2,4],[2,3,4],[3,0,4]]\n);"
+    },
+    {
+      "name": "translate",
+      "category": "Transformations",
+      "summary": "Moves child objects by a vector",
+      "syntax": "translate(v) { ... }",
+      "parameters": [
+        { "name": "v", "type": "[x,y,z]", "default": "required", "description": "Translation vector" }
+      ],
+      "description": "Translates (moves) all child objects by the given vector. Does not change the object's shape or orientation.",
+      "example": "translate([10, 0, 5])\n  cube(10);"
+    },
+    {
+      "name": "rotate",
+      "category": "Transformations",
+      "summary": "Rotates child objects around axes or an arbitrary axis",
+      "syntax": "rotate(a, v) { ... }",
+      "parameters": [
+        { "name": "a", "type": "number | [x,y,z]", "default": "required", "description": "Angle(s) in degrees. If [x,y,z], rotates around each axis." },
+        { "name": "v", "type": "[x,y,z]", "default": "undefined", "description": "Axis of rotation (used when a is a single number)" }
+      ],
+      "description": "Rotates child objects. When a is [ax,ay,az], rotates around X, Y, then Z axes in that order. When a is a number with v, rotates a degrees around the v axis.",
+      "example": "rotate([0, 0, 45])\n  cube(10);\nrotate(45, v=[1, 0, 0])\n  cylinder(h=10, r=5);"
+    },
+    {
+      "name": "scale",
+      "category": "Transformations",
+      "summary": "Scales child objects by a vector",
+      "syntax": "scale(v) { ... }",
+      "parameters": [
+        { "name": "v", "type": "[x,y,z]", "default": "required", "description": "Scale factors for each axis" }
+      ],
+      "description": "Scales child objects by the given factors along each axis. A factor of 1 means no change, 2 means double size, 0.5 means half size.",
+      "example": "scale([2, 1, 0.5])\n  sphere(r=10);"
+    },
+    {
+      "name": "resize",
+      "category": "Transformations",
+      "summary": "Resizes child objects to specified dimensions",
+      "syntax": "resize(newsize, auto) { ... }",
+      "parameters": [
+        { "name": "newsize", "type": "[x,y,z]", "default": "required", "description": "Target dimensions. Use 0 for auto-scaled axes." },
+        { "name": "auto", "type": "boolean | [bool,bool,bool]", "default": "false", "description": "Auto-scale axes set to 0 to maintain proportions" }
+      ],
+      "description": "Resizes child objects to fit within the specified dimensions. Unlike scale, this uses absolute dimensions. Use auto=true to proportionally scale axes set to 0.",
+      "example": "resize([20, 0, 0], auto=true)\n  sphere(r=10);"
+    },
+    {
+      "name": "mirror",
+      "category": "Transformations",
+      "summary": "Mirrors child objects through a plane",
+      "syntax": "mirror(v) { ... }",
+      "parameters": [
+        { "name": "v", "type": "[x,y,z]", "default": "required", "description": "Normal vector of the mirror plane through the origin" }
+      ],
+      "description": "Mirrors child objects through a plane defined by the normal vector v passing through the origin. For example, [1,0,0] mirrors through the YZ plane.",
+      "example": "mirror([1, 0, 0])\n  translate([10, 0, 0])\n    cube(5);"
+    },
+    {
+      "name": "multmatrix",
+      "category": "Transformations",
+      "summary": "Applies a 4x4 affine transformation matrix",
+      "syntax": "multmatrix(m) { ... }",
+      "parameters": [
+        { "name": "m", "type": "[[4 numbers] x 4]", "default": "required", "description": "4x4 transformation matrix (4th row is always [0,0,0,1])" }
+      ],
+      "description": "Applies an arbitrary 4x4 affine transformation matrix to child objects. This is the most general transformation, encompassing translate, rotate, scale, mirror, and shear.",
+      "example": "multmatrix([\n  [1, 0, 0, 10],\n  [0, 1, 0, 20],\n  [0, 0, 1, 30],\n  [0, 0, 0,  1]\n]) cube(10);"
+    },
+    {
+      "name": "color",
+      "category": "Transformations",
+      "summary": "Sets the color and opacity of child objects",
+      "syntax": "color(c, alpha) { ... }",
+      "parameters": [
+        { "name": "c", "type": "string | [r,g,b] | [r,g,b,a]", "default": "required", "description": "Color name, hex string, or RGB(A) values 0-1" },
+        { "name": "alpha", "type": "number", "default": "1.0", "description": "Opacity from 0 (transparent) to 1 (opaque)" }
+      ],
+      "description": "Sets the color of child objects. Accepts CSS color names (\"red\"), hex strings (\"#ff0000\"), or RGB/RGBA arrays with values 0-1. Alpha controls transparency.",
+      "example": "color(\"red\") cube(10);\ncolor([0.2, 0.5, 0.8, 0.5]) sphere(r=10);\ncolor(\"#44cc88\") cylinder(h=10, r=5);"
+    },
+    {
+      "name": "offset",
+      "category": "Transformations",
+      "summary": "Expands or contracts a 2D shape",
+      "syntax": "offset(r|delta, chamfer) { ... }",
+      "parameters": [
+        { "name": "r", "type": "number", "default": "undefined", "description": "Radius of rounded offset (positive expands, negative contracts)" },
+        { "name": "delta", "type": "number", "default": "undefined", "description": "Offset distance (straight edges, no rounding)" },
+        { "name": "chamfer", "type": "boolean", "default": "false", "description": "Use chamfer instead of round for delta mode" }
+      ],
+      "description": "Offsets a 2D shape inward or outward. With r, corners are rounded. With delta, corners are sharp or chamfered. Useful for creating outlines, borders, or shrinking/growing shapes.",
+      "example": "offset(r=5)\n  square(20, center=true);\noffset(delta=-2)\n  circle(r=15);"
+    },
+    {
+      "name": "hull",
+      "category": "Transformations",
+      "summary": "Creates the convex hull of child objects",
+      "syntax": "hull() { ... }",
+      "parameters": [],
+      "description": "Computes the convex hull of all child objects — the smallest convex shape that encloses them all. Works with both 2D and 3D objects. Useful for creating smooth shapes between primitives.",
+      "example": "hull() {\n  translate([0, 0, 0]) sphere(r=5);\n  translate([20, 0, 0]) sphere(r=5);\n}"
+    },
+    {
+      "name": "minkowski",
+      "category": "Transformations",
+      "summary": "Computes the Minkowski sum of child objects",
+      "syntax": "minkowski() { ... }",
+      "parameters": [],
+      "description": "Computes the Minkowski sum of child objects. Effectively 'sweeps' the second shape around the first, useful for rounding edges. The result size is the sum of the children's sizes. Computationally expensive.",
+      "example": "minkowski() {\n  cube([10, 10, 2]);\n  sphere(r=2);\n} // cube with rounded edges"
+    },
+    {
+      "name": "union",
+      "category": "Boolean Operations",
+      "summary": "Combines multiple objects into one",
+      "syntax": "union() { ... }",
+      "parameters": [],
+      "description": "Creates the union of all child objects — merges them into a single solid. This is the default operation when objects are placed together without an explicit boolean. Useful for explicitly combining parts.",
+      "example": "union() {\n  cube(10);\n  translate([5, 5, 5])\n    sphere(r=8);\n}"
+    },
+    {
+      "name": "difference",
+      "category": "Boolean Operations",
+      "summary": "Subtracts objects from the first child",
+      "syntax": "difference() { ... }",
+      "parameters": [],
+      "description": "Subtracts all subsequent children from the first child. The first child is the base shape; all other children are cut away from it. This is the primary way to create holes, slots, and cutouts.",
+      "example": "difference() {\n  cube(20, center=true);\n  sphere(r=13);\n}"
+    },
+    {
+      "name": "intersection",
+      "category": "Boolean Operations",
+      "summary": "Keeps only the overlapping volume of objects",
+      "syntax": "intersection() { ... }",
+      "parameters": [],
+      "description": "Creates the intersection of all child objects — keeps only the volume where all children overlap. Useful for creating complex shapes by finding common regions.",
+      "example": "intersection() {\n  cube(15, center=true);\n  sphere(r=10);\n}"
+    },
+    {
+      "name": "linear_extrude",
+      "category": "Extrusions",
+      "summary": "Extrudes a 2D shape along the Z axis",
+      "syntax": "linear_extrude(height, center, convexity, twist, slices, scale, $fn) { ... }",
+      "parameters": [
+        { "name": "height", "type": "number", "default": "100", "description": "Height of the extrusion" },
+        { "name": "center", "type": "boolean", "default": "false", "description": "Center the extrusion vertically" },
+        { "name": "twist", "type": "number", "default": "0", "description": "Degrees of twist over the height" },
+        { "name": "slices", "type": "number", "default": "auto", "description": "Number of vertical slices (for twist)" },
+        { "name": "scale", "type": "number | [x,y]", "default": "1", "description": "Scale factor at the top" },
+        { "name": "convexity", "type": "number", "default": "1", "description": "Maximum front-back crossings for rendering" }
+      ],
+      "description": "Extrudes a 2D shape along the Z axis to create a 3D object. Can apply twist (rotation) and scale (taper) during extrusion. Child must be a 2D shape (circle, square, polygon, text, etc.).",
+      "example": "linear_extrude(height=20, twist=90, slices=50)\n  square(10, center=true);\nlinear_extrude(height=10, scale=0.5)\n  circle(r=15);"
+    },
+    {
+      "name": "rotate_extrude",
+      "category": "Extrusions",
+      "summary": "Creates a solid of revolution from a 2D shape",
+      "syntax": "rotate_extrude(angle, convexity, $fn) { ... }",
+      "parameters": [
+        { "name": "angle", "type": "number", "default": "360", "description": "Degrees of revolution (0-360)" },
+        { "name": "convexity", "type": "number", "default": "2", "description": "Maximum front-back crossings for rendering" },
+        { "name": "$fn", "type": "number", "default": "0", "description": "Number of fragments for the revolution" }
+      ],
+      "description": "Rotates a 2D shape around the Z axis to create a solid of revolution. The 2D shape must be in the positive X half-plane (x >= 0). Useful for creating round objects like bowls, rings, vases.",
+      "example": "rotate_extrude($fn=100)\n  translate([20, 0, 0])\n    circle(r=5);\nrotate_extrude(angle=180)\n  translate([10, 0])\n    square([5, 20]);"
+    },
+    {
+      "name": "abs",
+      "category": "Math Functions",
+      "summary": "Returns the absolute value",
+      "syntax": "abs(x)",
+      "parameters": [
+        { "name": "x", "type": "number", "default": "required", "description": "Input value" }
+      ],
+      "description": "Returns the absolute (non-negative) value of a number.",
+      "example": "abs(-5); // 5"
+    },
+    {
+      "name": "ceil",
+      "category": "Math Functions",
+      "summary": "Rounds up to the nearest integer",
+      "syntax": "ceil(x)",
+      "parameters": [
+        { "name": "x", "type": "number", "default": "required", "description": "Input value" }
+      ],
+      "description": "Returns the smallest integer greater than or equal to x.",
+      "example": "ceil(4.3); // 5"
+    },
+    {
+      "name": "floor",
+      "category": "Math Functions",
+      "summary": "Rounds down to the nearest integer",
+      "syntax": "floor(x)",
+      "parameters": [
+        { "name": "x", "type": "number", "default": "required", "description": "Input value" }
+      ],
+      "description": "Returns the largest integer less than or equal to x.",
+      "example": "floor(4.7); // 4"
+    },
+    {
+      "name": "round",
+      "category": "Math Functions",
+      "summary": "Rounds to the nearest integer",
+      "syntax": "round(x)",
+      "parameters": [
+        { "name": "x", "type": "number", "default": "required", "description": "Input value" }
+      ],
+      "description": "Rounds x to the nearest integer. Halfway values round to the nearest even integer.",
+      "example": "round(4.5); // 4\nround(5.5); // 6"
+    },
+    {
+      "name": "sign",
+      "category": "Math Functions",
+      "summary": "Returns the sign of a number",
+      "syntax": "sign(x)",
+      "parameters": [
+        { "name": "x", "type": "number", "default": "required", "description": "Input value" }
+      ],
+      "description": "Returns -1 for negative, 0 for zero, 1 for positive numbers.",
+      "example": "sign(-5); // -1\nsign(0); // 0\nsign(3); // 1"
+    },
+    {
+      "name": "min",
+      "category": "Math Functions",
+      "summary": "Returns the minimum value",
+      "syntax": "min(a, b, ...)",
+      "parameters": [
+        { "name": "values", "type": "number | vector", "default": "required", "description": "Two or more values, or a vector" }
+      ],
+      "description": "Returns the minimum value from the given arguments or from a vector.",
+      "example": "min(3, 5, 1); // 1\nmin([3, 5, 1]); // 1"
+    },
+    {
+      "name": "max",
+      "category": "Math Functions",
+      "summary": "Returns the maximum value",
+      "syntax": "max(a, b, ...)",
+      "parameters": [
+        { "name": "values", "type": "number | vector", "default": "required", "description": "Two or more values, or a vector" }
+      ],
+      "description": "Returns the maximum value from the given arguments or from a vector.",
+      "example": "max(3, 5, 1); // 5\nmax([3, 5, 1]); // 5"
+    },
+    {
+      "name": "pow",
+      "category": "Math Functions",
+      "summary": "Returns base raised to the power of exponent",
+      "syntax": "pow(base, exponent)",
+      "parameters": [
+        { "name": "base", "type": "number", "default": "required", "description": "Base value" },
+        { "name": "exponent", "type": "number", "default": "required", "description": "Exponent value" }
+      ],
+      "description": "Returns base raised to the power of exponent.",
+      "example": "pow(2, 10); // 1024"
+    },
+    {
+      "name": "sqrt",
+      "category": "Math Functions",
+      "summary": "Returns the square root",
+      "syntax": "sqrt(x)",
+      "parameters": [
+        { "name": "x", "type": "number", "default": "required", "description": "Non-negative input value" }
+      ],
+      "description": "Returns the square root of x. x must be non-negative.",
+      "example": "sqrt(16); // 4"
+    },
+    {
+      "name": "exp",
+      "category": "Math Functions",
+      "summary": "Returns e raised to the power of x",
+      "syntax": "exp(x)",
+      "parameters": [
+        { "name": "x", "type": "number", "default": "required", "description": "Exponent value" }
+      ],
+      "description": "Returns Euler's number e raised to the power of x.",
+      "example": "exp(1); // 2.71828..."
+    },
+    {
+      "name": "ln",
+      "category": "Math Functions",
+      "summary": "Returns the natural logarithm",
+      "syntax": "ln(x)",
+      "parameters": [
+        { "name": "x", "type": "number", "default": "required", "description": "Positive input value" }
+      ],
+      "description": "Returns the natural logarithm (base e) of x.",
+      "example": "ln(exp(1)); // 1"
+    },
+    {
+      "name": "log",
+      "category": "Math Functions",
+      "summary": "Returns the base-10 logarithm",
+      "syntax": "log(x)",
+      "parameters": [
+        { "name": "x", "type": "number", "default": "required", "description": "Positive input value" }
+      ],
+      "description": "Returns the base-10 logarithm of x. Note: unlike many languages, OpenSCAD's log() is base 10.",
+      "example": "log(1000); // 3"
+    },
+    {
+      "name": "norm",
+      "category": "Math Functions",
+      "summary": "Returns the Euclidean norm of a vector",
+      "syntax": "norm(v)",
+      "parameters": [
+        { "name": "v", "type": "vector", "default": "required", "description": "Input vector" }
+      ],
+      "description": "Returns the Euclidean norm (length) of a vector.",
+      "example": "norm([3, 4]); // 5\nnorm([1, 2, 3]); // 3.742..."
+    },
+    {
+      "name": "cross",
+      "category": "Math Functions",
+      "summary": "Returns the cross product of two vectors",
+      "syntax": "cross(a, b)",
+      "parameters": [
+        { "name": "a", "type": "[x,y,z]", "default": "required", "description": "First 3D vector" },
+        { "name": "b", "type": "[x,y,z]", "default": "required", "description": "Second 3D vector" }
+      ],
+      "description": "Returns the cross product of two 3D vectors. For 2D vectors, returns the scalar z-component.",
+      "example": "cross([1,0,0], [0,1,0]); // [0,0,1]"
+    },
+    {
+      "name": "rands",
+      "category": "Math Functions",
+      "summary": "Generates random numbers",
+      "syntax": "rands(min, max, count, seed)",
+      "parameters": [
+        { "name": "min", "type": "number", "default": "required", "description": "Minimum value" },
+        { "name": "max", "type": "number", "default": "required", "description": "Maximum value" },
+        { "name": "count", "type": "number", "default": "required", "description": "Number of random values to generate" },
+        { "name": "seed", "type": "number", "default": "undefined", "description": "Random seed for reproducibility" }
+      ],
+      "description": "Generates a vector of random numbers between min and max.",
+      "example": "rands(0, 10, 5); // e.g., [3.2, 7.1, 1.5, 9.8, 4.3]"
+    },
+    {
+      "name": "sin",
+      "category": "Trigonometric Functions",
+      "summary": "Returns the sine of an angle in degrees",
+      "syntax": "sin(degrees)",
+      "parameters": [
+        { "name": "degrees", "type": "number", "default": "required", "description": "Angle in degrees" }
+      ],
+      "description": "Returns the sine of the angle. OpenSCAD uses degrees, not radians.",
+      "example": "sin(90); // 1\nsin(30); // 0.5"
+    },
+    {
+      "name": "cos",
+      "category": "Trigonometric Functions",
+      "summary": "Returns the cosine of an angle in degrees",
+      "syntax": "cos(degrees)",
+      "parameters": [
+        { "name": "degrees", "type": "number", "default": "required", "description": "Angle in degrees" }
+      ],
+      "description": "Returns the cosine of the angle. OpenSCAD uses degrees, not radians.",
+      "example": "cos(0); // 1\ncos(60); // 0.5"
+    },
+    {
+      "name": "tan",
+      "category": "Trigonometric Functions",
+      "summary": "Returns the tangent of an angle in degrees",
+      "syntax": "tan(degrees)",
+      "parameters": [
+        { "name": "degrees", "type": "number", "default": "required", "description": "Angle in degrees" }
+      ],
+      "description": "Returns the tangent of the angle. OpenSCAD uses degrees.",
+      "example": "tan(45); // 1"
+    },
+    {
+      "name": "asin",
+      "category": "Trigonometric Functions",
+      "summary": "Returns the arcsine in degrees",
+      "syntax": "asin(x)",
+      "parameters": [
+        { "name": "x", "type": "number", "default": "required", "description": "Value between -1 and 1" }
+      ],
+      "description": "Returns the arcsine (inverse sine) in degrees.",
+      "example": "asin(1); // 90"
+    },
+    {
+      "name": "acos",
+      "category": "Trigonometric Functions",
+      "summary": "Returns the arccosine in degrees",
+      "syntax": "acos(x)",
+      "parameters": [
+        { "name": "x", "type": "number", "default": "required", "description": "Value between -1 and 1" }
+      ],
+      "description": "Returns the arccosine (inverse cosine) in degrees.",
+      "example": "acos(0.5); // 60"
+    },
+    {
+      "name": "atan",
+      "category": "Trigonometric Functions",
+      "summary": "Returns the arctangent in degrees",
+      "syntax": "atan(x)",
+      "parameters": [
+        { "name": "x", "type": "number", "default": "required", "description": "Input value" }
+      ],
+      "description": "Returns the arctangent (inverse tangent) in degrees.",
+      "example": "atan(1); // 45"
+    },
+    {
+      "name": "atan2",
+      "category": "Trigonometric Functions",
+      "summary": "Returns the two-argument arctangent in degrees",
+      "syntax": "atan2(y, x)",
+      "parameters": [
+        { "name": "y", "type": "number", "default": "required", "description": "Y component" },
+        { "name": "x", "type": "number", "default": "required", "description": "X component" }
+      ],
+      "description": "Returns the angle in degrees between the positive X axis and the point (x, y). Handles all four quadrants correctly.",
+      "example": "atan2(1, 1); // 45\natan2(-1, -1); // -135"
+    },
+    {
+      "name": "str",
+      "category": "String Functions",
+      "summary": "Converts values to a string",
+      "syntax": "str(value, ...)",
+      "parameters": [
+        { "name": "values", "type": "any", "default": "required", "description": "One or more values to concatenate as a string" }
+      ],
+      "description": "Converts one or more values to a string representation and concatenates them.",
+      "example": "str(\"size: \", 10, \"mm\"); // \"size: 10mm\""
+    },
+    {
+      "name": "chr",
+      "category": "String Functions",
+      "summary": "Converts Unicode code point(s) to characters",
+      "syntax": "chr(code)",
+      "parameters": [
+        { "name": "code", "type": "number | [numbers]", "default": "required", "description": "Unicode code point(s)" }
+      ],
+      "description": "Converts one or more Unicode code points to their character representation.",
+      "example": "chr(65); // \"A\"\nchr([72,101,108,108,111]); // \"Hello\""
+    },
+    {
+      "name": "ord",
+      "category": "String Functions",
+      "summary": "Returns the Unicode code point of a character",
+      "syntax": "ord(char)",
+      "parameters": [
+        { "name": "char", "type": "string", "default": "required", "description": "Single character string" }
+      ],
+      "description": "Returns the Unicode code point of the first character in a string.",
+      "example": "ord(\"A\"); // 65"
+    },
+    {
+      "name": "search",
+      "category": "String Functions",
+      "summary": "Searches for values in strings or vectors",
+      "syntax": "search(match, string_or_vector, num_returns, index_col)",
+      "parameters": [
+        { "name": "match", "type": "string | number | vector", "default": "required", "description": "Value(s) to search for" },
+        { "name": "string_or_vector", "type": "string | vector", "default": "required", "description": "String or vector to search in" },
+        { "name": "num_returns", "type": "number", "default": "1", "description": "Number of matches to return per search value" },
+        { "name": "index_col", "type": "number", "default": "0", "description": "Column index for searching in vectors of vectors" }
+      ],
+      "description": "Searches for occurrences of match values within a string or vector. Returns indices of matching elements.",
+      "example": "search(\"a\", \"banana\"); // [1]\nsearch(\"a\", \"banana\", 0); // [1,3,5]"
+    },
+    {
+      "name": "len",
+      "category": "String Functions",
+      "summary": "Returns the length of a string or vector",
+      "syntax": "len(value)",
+      "parameters": [
+        { "name": "value", "type": "string | vector", "default": "required", "description": "String or vector to measure" }
+      ],
+      "description": "Returns the length (number of characters or elements) of a string or vector. Returns undef for numbers.",
+      "example": "len(\"hello\"); // 5\nlen([1,2,3]); // 3"
+    },
+    {
+      "name": "concat",
+      "category": "List Functions",
+      "summary": "Concatenates vectors and values into a single vector",
+      "syntax": "concat(a, b, ...)",
+      "parameters": [
+        { "name": "values", "type": "any", "default": "required", "description": "Vectors and/or values to concatenate" }
+      ],
+      "description": "Concatenates vectors and individual values into a single flat vector.",
+      "example": "concat([1,2], [3,4]); // [1,2,3,4]\nconcat([1,2], 3); // [1,2,3]"
+    },
+    {
+      "name": "lookup",
+      "category": "List Functions",
+      "summary": "Looks up a value in a table with interpolation",
+      "syntax": "lookup(key, table)",
+      "parameters": [
+        { "name": "key", "type": "number", "default": "required", "description": "Key value to look up" },
+        { "name": "table", "type": "[[key, value], ...]", "default": "required", "description": "Table of [key, value] pairs, sorted by key" }
+      ],
+      "description": "Performs linear interpolation lookup in a table of [key, value] pairs. If key falls between table entries, the value is linearly interpolated.",
+      "example": "lookup(1.5, [[0, 0], [1, 10], [2, 20]]); // 15"
+    },
+    {
+      "name": "for",
+      "category": "Control Flow",
+      "summary": "Iterates over a range or vector to create objects",
+      "syntax": "for (var = range_or_vector) { ... }",
+      "parameters": [
+        { "name": "var", "type": "variable", "default": "required", "description": "Loop variable name" },
+        { "name": "range", "type": "[start:end] | [start:step:end] | vector", "default": "required", "description": "Range or vector to iterate over" }
+      ],
+      "description": "Generates child objects for each value in a range or vector. Creates a union of all generated objects. Can be nested for multi-dimensional iteration. Range is inclusive of both endpoints.",
+      "example": "for (i = [0:5:30])\n  translate([i, 0, 0])\n    cube(4);\nfor (angle = [0:60:300])\n  rotate([0, 0, angle])\n    translate([20, 0, 0])\n      sphere(r=3);"
+    },
+    {
+      "name": "intersection_for",
+      "category": "Control Flow",
+      "summary": "Iterates and intersects all generated objects",
+      "syntax": "intersection_for(var = range_or_vector) { ... }",
+      "parameters": [
+        { "name": "var", "type": "variable", "default": "required", "description": "Loop variable name" },
+        { "name": "range", "type": "[start:end] | [start:step:end] | vector", "default": "required", "description": "Range or vector to iterate over" }
+      ],
+      "description": "Like for, but intersects all generated objects instead of unioning them. The result is only the volume common to all iterations.",
+      "example": "intersection_for(a = [0, 60, 120])\n  rotate([0, 0, a])\n    cube([100, 20, 20], center=true);"
+    },
+    {
+      "name": "if",
+      "category": "Control Flow",
+      "summary": "Conditional object generation",
+      "syntax": "if (condition) { ... } else { ... }",
+      "parameters": [
+        { "name": "condition", "type": "boolean", "default": "required", "description": "Condition to evaluate" }
+      ],
+      "description": "Conditionally includes child objects. Can be used with else for alternative objects. Conditions follow standard boolean logic.",
+      "example": "if (use_sphere) {\n  sphere(r=10);\n} else {\n  cube(15, center=true);\n}"
+    },
+    {
+      "name": "let",
+      "category": "Control Flow",
+      "summary": "Defines local variables in an expression",
+      "syntax": "let (var = value, ...) expression",
+      "parameters": [
+        { "name": "assignments", "type": "variable = value", "default": "required", "description": "One or more variable assignments" }
+      ],
+      "description": "Defines local variables for use in the following expression or block. Variables are scoped to the let expression. Multiple variables can be defined in a single let.",
+      "example": "for (i = [0:5])\n  let (x = i * 10, y = i * i)\n    translate([x, y, 0])\n      cube(5);"
+    },
+    {
+      "name": "each",
+      "category": "Control Flow",
+      "summary": "Flattens a level of nesting in list comprehensions",
+      "syntax": "each expression",
+      "parameters": [],
+      "description": "Used in list comprehensions to flatten one level of nesting. Without each, nested lists stay nested; with each, elements are unwrapped into the parent list.",
+      "example": "list = [each [1,2], each [3,4]]; // [1,2,3,4]"
+    },
+    {
+      "name": "assert",
+      "category": "Control Flow",
+      "summary": "Asserts a condition, halting on failure",
+      "syntax": "assert(condition, message)",
+      "parameters": [
+        { "name": "condition", "type": "boolean", "default": "required", "description": "Condition that must be true" },
+        { "name": "message", "type": "string", "default": "\"\"", "description": "Error message shown on failure" }
+      ],
+      "description": "Checks that a condition is true. If false, stops execution and displays the error message. Useful for validating parameters.",
+      "example": "module box(size) {\n  assert(size > 0, \"Size must be positive\");\n  cube(size);\n}"
+    },
+    {
+      "name": "echo",
+      "category": "Control Flow",
+      "summary": "Prints values to the console",
+      "syntax": "echo(value, ...)",
+      "parameters": [
+        { "name": "values", "type": "any", "default": "required", "description": "Values to print" }
+      ],
+      "description": "Outputs values to the console for debugging. Does not affect the model. Can be used inline in expressions.",
+      "example": "echo(\"Width:\", width);\necho(str(\"Area = \", width * height));"
+    },
+    {
+      "name": "$fn",
+      "category": "Special Variables",
+      "summary": "Sets the number of fragments for curved surfaces",
+      "syntax": "$fn = number;",
+      "parameters": [
+        { "name": "$fn", "type": "number", "default": "0", "description": "Number of fragments (0 = use $fa and $fs)" }
+      ],
+      "description": "Controls the resolution of circles, spheres, and cylinders. Higher values produce smoother curves. When set to 0, $fa and $fs are used instead. Common values: 20 (draft), 50-100 (preview), 200+ (final render).",
+      "example": "$fn = 100;\nsphere(r=10); // smooth sphere"
+    },
+    {
+      "name": "$fa",
+      "category": "Special Variables",
+      "summary": "Sets the minimum angle for each fragment",
+      "syntax": "$fa = degrees;",
+      "parameters": [
+        { "name": "$fa", "type": "number", "default": "12", "description": "Minimum fragment angle in degrees" }
+      ],
+      "description": "Sets the minimum angle for each fragment of circles and spheres. Lower values produce more fragments (smoother curves). Only used when $fn is 0.",
+      "example": "$fa = 1; // very smooth curves"
+    },
+    {
+      "name": "$fs",
+      "category": "Special Variables",
+      "summary": "Sets the minimum size for each fragment",
+      "syntax": "$fs = size;",
+      "parameters": [
+        { "name": "$fs", "type": "number", "default": "2", "description": "Minimum fragment size" }
+      ],
+      "description": "Sets the minimum size (length) of each fragment for circles and spheres. Lower values produce more fragments. Only used when $fn is 0.",
+      "example": "$fs = 0.5; // fine detail"
+    },
+    {
+      "name": "$t",
+      "category": "Special Variables",
+      "summary": "Animation time variable (0 to 1)",
+      "syntax": "$t",
+      "parameters": [],
+      "description": "Animation time variable that varies from 0 to 1 during animation. Used with OpenSCAD's animation feature to create animated models.",
+      "example": "rotate([0, 0, $t * 360])\n  cube(10, center=true);"
+    },
+    {
+      "name": "$children",
+      "category": "Special Variables",
+      "summary": "Number of child objects passed to a module",
+      "syntax": "$children",
+      "parameters": [],
+      "description": "Contains the number of child objects passed to the current module. Used to conditionally handle different numbers of children.",
+      "example": "module distribute() {\n  for (i = [0:$children-1])\n    translate([i*20, 0, 0])\n      children(i);\n}"
+    },
+    {
+      "name": "$preview",
+      "category": "Special Variables",
+      "summary": "True during preview (F5), false during render (F6)",
+      "syntax": "$preview",
+      "parameters": [],
+      "description": "Boolean that is true during preview mode (F5) and false during final render (F6). Useful for using lower resolution in preview for speed.",
+      "example": "$fn = $preview ? 20 : 100;\nsphere(r=10);"
+    },
+    {
+      "name": "module",
+      "category": "Modules",
+      "summary": "Defines a reusable module (like a function for geometry)",
+      "syntax": "module name(params) { ... }",
+      "parameters": [
+        { "name": "name", "type": "identifier", "default": "required", "description": "Module name" },
+        { "name": "params", "type": "parameter list", "default": "optional", "description": "Parameters with optional defaults" }
+      ],
+      "description": "Defines a reusable named block of geometry. Modules can accept parameters with default values and can contain any OpenSCAD code. Call by name like a built-in function.",
+      "example": "module rounded_box(w, h, d, r=2) {\n  minkowski() {\n    cube([w-2*r, h-2*r, d-2*r], center=true);\n    sphere(r=r);\n  }\n}\nrounded_box(20, 10, 5);"
+    },
+    {
+      "name": "function",
+      "category": "Modules",
+      "summary": "Defines a function that returns a value",
+      "syntax": "function name(params) = expression;",
+      "parameters": [
+        { "name": "name", "type": "identifier", "default": "required", "description": "Function name" },
+        { "name": "params", "type": "parameter list", "default": "optional", "description": "Parameters with optional defaults" }
+      ],
+      "description": "Defines a named function that computes and returns a value. Unlike modules, functions return values rather than creating geometry. Supports recursion.",
+      "example": "function circumference(r) = 2 * PI * r;\nfunction factorial(n) = n <= 1 ? 1 : n * factorial(n-1);"
+    },
+    {
+      "name": "children",
+      "category": "Modules",
+      "summary": "Accesses child objects passed to a module",
+      "syntax": "children(index);",
+      "parameters": [
+        { "name": "index", "type": "number | range", "default": "all", "description": "Index or range of children to access" }
+      ],
+      "description": "Within a module, accesses the child objects passed to it. Without arguments, passes all children. With an index, passes a specific child. With a range, passes a subset.",
+      "example": "module colorize() {\n  color(\"red\") children(0);\n  color(\"blue\") children(1);\n}\ncolorize() {\n  cube(10);\n  sphere(r=5);\n}"
+    },
+    {
+      "name": "include",
+      "category": "Modules",
+      "summary": "Includes another OpenSCAD file (runs its code)",
+      "syntax": "include <filename.scad>",
+      "parameters": [
+        { "name": "filename", "type": "string", "default": "required", "description": "Path to the .scad file" }
+      ],
+      "description": "Includes another OpenSCAD file, executing all its code (modules, functions, and geometry). The included file's top-level geometry will be rendered.",
+      "example": "include <MCAD/bearing.scad>"
+    },
+    {
+      "name": "use",
+      "category": "Modules",
+      "summary": "Imports modules and functions from another file",
+      "syntax": "use <filename.scad>",
+      "parameters": [
+        { "name": "filename", "type": "string", "default": "required", "description": "Path to the .scad file" }
+      ],
+      "description": "Imports modules and functions from another file without executing its top-level geometry. Only the named definitions become available.",
+      "example": "use <MCAD/involute_gears.scad>\ngear(number_of_teeth=12);"
+    },
+    {
+      "name": "import",
+      "category": "Import/Export",
+      "summary": "Imports external 2D/3D files",
+      "syntax": "import(file, convexity, layer);",
+      "parameters": [
+        { "name": "file", "type": "string", "default": "required", "description": "Path to the file (STL, OFF, AMF, 3MF, DXF, SVG)" },
+        { "name": "convexity", "type": "number", "default": "1", "description": "Maximum front-back crossings" },
+        { "name": "layer", "type": "string", "default": "undefined", "description": "Layer name for DXF files" }
+      ],
+      "description": "Imports 2D or 3D geometry from external files. Supported 3D formats: STL, OFF, AMF, 3MF. Supported 2D formats: DXF, SVG. DXF files can target specific layers.",
+      "example": "import(\"model.stl\");\nimport(\"drawing.dxf\", layer=\"cut\");\nimport(\"logo.svg\");"
+    },
+    {
+      "name": "surface",
+      "category": "Import/Export",
+      "summary": "Generates a surface from a heightmap file",
+      "syntax": "surface(file, center, invert, convexity);",
+      "parameters": [
+        { "name": "file", "type": "string", "default": "required", "description": "Path to heightmap file (DAT or image)" },
+        { "name": "center", "type": "boolean", "default": "false", "description": "Center the surface at the origin" },
+        { "name": "invert", "type": "boolean", "default": "false", "description": "Invert the heightmap" },
+        { "name": "convexity", "type": "number", "default": "1", "description": "Maximum front-back crossings" }
+      ],
+      "description": "Creates a 3D surface from a heightmap data file (text grid of numbers) or image. Each pixel/value becomes a height point.",
+      "example": "surface(file=\"terrain.dat\", center=true);"
+    },
+    {
+      "name": "projection",
+      "category": "Other",
+      "summary": "Projects a 3D object onto a 2D plane",
+      "syntax": "projection(cut) { ... }",
+      "parameters": [
+        { "name": "cut", "type": "boolean", "default": "false", "description": "If true, creates cross-section at z=0; if false, projects entire silhouette" }
+      ],
+      "description": "Creates a 2D shape from a 3D object. With cut=false, projects the entire 3D silhouette onto the XY plane. With cut=true, takes a cross-section at z=0.",
+      "example": "projection(cut=true)\n  translate([0, 0, -5])\n    sphere(r=10);\nprojection(cut=false)\n  sphere(r=10);"
+    },
+    {
+      "name": "render",
+      "category": "Other",
+      "summary": "Forces full CGAL rendering of child objects",
+      "syntax": "render(convexity) { ... }",
+      "parameters": [
+        { "name": "convexity", "type": "number", "default": "1", "description": "Maximum front-back crossings" }
+      ],
+      "description": "Forces CGAL rendering of child objects during preview (F5). Normally preview uses OpenCSG which is faster but less accurate. Use render() when preview shows artifacts with boolean operations.",
+      "example": "render(convexity=2)\n  difference() {\n    cube(20, center=true);\n    sphere(r=13);\n  }"
+    },
+    {
+      "name": "modifier_characters",
+      "category": "Other",
+      "summary": "Debug/modifier prefixes: *, !, #, %",
+      "syntax": "*/!/#/% object();",
+      "parameters": [
+        { "name": "*", "type": "prefix", "default": "", "description": "Disable: ignores the subtree" },
+        { "name": "!", "type": "prefix", "default": "", "description": "Show only: renders only this subtree" },
+        { "name": "#", "type": "prefix", "default": "", "description": "Highlight: shows object in transparent red" },
+        { "name": "%", "type": "prefix", "default": "", "description": "Transparent: shows object as transparent gray" }
+      ],
+      "description": "Prefix characters that modify how objects are processed: * disables the object, ! shows only that object, # highlights in red (debug), % shows as transparent background.",
+      "example": "difference() {\n  cube(20, center=true);\n  # sphere(r=13); // highlighted in red to see the cut\n}"
+    },
+    {
+      "name": "PI",
+      "category": "Math Functions",
+      "summary": "Mathematical constant PI (3.14159...)",
+      "syntax": "PI",
+      "parameters": [],
+      "description": "The mathematical constant PI, approximately 3.14159265358979. Since OpenSCAD uses degrees for angles, PI is mainly useful for calculating circumferences, areas, etc.",
+      "example": "circumference = 2 * PI * radius;"
+    },
+    {
+      "name": "is_undef",
+      "category": "Math Functions",
+      "summary": "Checks if a value is undefined",
+      "syntax": "is_undef(value)",
+      "parameters": [
+        { "name": "value", "type": "any", "default": "required", "description": "Value to check" }
+      ],
+      "description": "Returns true if the value is undef (undefined). Useful for checking if optional parameters were provided.",
+      "example": "module foo(x) {\n  size = is_undef(x) ? 10 : x;\n  cube(size);\n}"
+    },
+    {
+      "name": "is_list",
+      "category": "Math Functions",
+      "summary": "Checks if a value is a list/vector",
+      "syntax": "is_list(value)",
+      "parameters": [
+        { "name": "value", "type": "any", "default": "required", "description": "Value to check" }
+      ],
+      "description": "Returns true if the value is a list (vector).",
+      "example": "is_list([1,2,3]); // true\nis_list(42); // false"
+    },
+    {
+      "name": "is_num",
+      "category": "Math Functions",
+      "summary": "Checks if a value is a number",
+      "syntax": "is_num(value)",
+      "parameters": [
+        { "name": "value", "type": "any", "default": "required", "description": "Value to check" }
+      ],
+      "description": "Returns true if the value is a number (not NaN, not undef).",
+      "example": "is_num(42); // true\nis_num(\"hi\"); // false"
+    },
+    {
+      "name": "is_string",
+      "category": "Math Functions",
+      "summary": "Checks if a value is a string",
+      "syntax": "is_string(value)",
+      "parameters": [
+        { "name": "value", "type": "any", "default": "required", "description": "Value to check" }
+      ],
+      "description": "Returns true if the value is a string.",
+      "example": "is_string(\"hello\"); // true\nis_string(42); // false"
+    },
+    {
+      "name": "is_bool",
+      "category": "Math Functions",
+      "summary": "Checks if a value is a boolean",
+      "syntax": "is_bool(value)",
+      "parameters": [
+        { "name": "value", "type": "any", "default": "required", "description": "Value to check" }
+      ],
+      "description": "Returns true if the value is a boolean (true or false).",
+      "example": "is_bool(true); // true\nis_bool(1); // false"
+    },
+    {
+      "name": "is_function",
+      "category": "Math Functions",
+      "summary": "Checks if a value is a function",
+      "syntax": "is_function(value)",
+      "parameters": [
+        { "name": "value", "type": "any", "default": "required", "description": "Value to check" }
+      ],
+      "description": "Returns true if the value is a function literal.",
+      "example": "f = function(x) x * 2;\nis_function(f); // true"
+    },
+    {
+      "name": "list_comprehension",
+      "category": "List Functions",
+      "summary": "Generates lists using comprehension syntax",
+      "syntax": "[ for (var = range) expression ]",
+      "parameters": [
+        { "name": "var", "type": "variable", "default": "required", "description": "Iterator variable" },
+        { "name": "range", "type": "range | vector", "default": "required", "description": "Values to iterate over" },
+        { "name": "expression", "type": "any", "default": "required", "description": "Expression evaluated for each value" }
+      ],
+      "description": "Creates a list by evaluating an expression for each value in a range or vector. Supports conditions with 'if'. Can be nested.",
+      "example": "points = [ for (i = [0:10]) [i, sin(i*36)] ];\neven = [ for (i = [0:10]) if (i % 2 == 0) i ];"
+    },
+    {
+      "name": "$vpr",
+      "category": "Special Variables",
+      "summary": "Viewport rotation angles",
+      "syntax": "$vpr",
+      "parameters": [],
+      "description": "Contains the current viewport rotation as [x, y, z] angles in degrees. Read-only during preview. Can be set in animation.",
+      "example": "echo($vpr); // e.g., [55, 0, 25]"
+    },
+    {
+      "name": "$vpt",
+      "category": "Special Variables",
+      "summary": "Viewport translation (camera target)",
+      "syntax": "$vpt",
+      "parameters": [],
+      "description": "Contains the current viewport translation (camera look-at point) as [x, y, z]. Read-only during preview.",
+      "example": "echo($vpt); // e.g., [0, 0, 0]"
+    },
+    {
+      "name": "$vpd",
+      "category": "Special Variables",
+      "summary": "Viewport camera distance",
+      "syntax": "$vpd",
+      "parameters": [],
+      "description": "Contains the current viewport camera distance. Read-only during preview.",
+      "example": "echo($vpd); // e.g., 140"
+    },
+    {
+      "name": "$vpf",
+      "category": "Special Variables",
+      "summary": "Viewport field of view angle",
+      "syntax": "$vpf",
+      "parameters": [],
+      "description": "Contains the current viewport field of view angle in degrees.",
+      "example": "echo($vpf); // e.g., 22.5"
+    }
+  ]
+}

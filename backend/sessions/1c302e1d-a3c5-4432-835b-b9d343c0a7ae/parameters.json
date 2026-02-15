@@ -1,0 +1,7 @@
+{
+  "cube_size": {
+    "value": 10,
+    "type": "number",
+    "description": "Size of the cube (width, height, and depth)"
+  }
+}

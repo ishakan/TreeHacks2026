@@ -1,0 +1,9 @@
+{
+  "sceneGraph": {
+    "type": "cube",
+    "size": [10, 10, 10],
+    "center": true,
+    "color": "#4A90E2"
+  },
+  "markdown": "# Small Cube\n\nA simple 3D cube primitive with equal dimensions on all sides.\n\n## Model Description\nThis is a basic cube centered at the origin. It's one of the fundamental building blocks in 3D modeling and can be used as-is or as a starting point for more complex models.\n\n## Parameters\n- **size**: The length of each side of the cube (default: 10 units)\n\n## Customization\nYou can adjust the `size` parameter to make the cube larger or smaller. The cube remains centered at the origin regardless of size.\n\n## 3D Printing Notes\n- This model is structurally sound for 3D printing\n- All faces are flat and oriented correctly\n- No support material needed\n- Recommended layer height: 0.2mm\n- Infill: 20-30% for a solid result"
+}

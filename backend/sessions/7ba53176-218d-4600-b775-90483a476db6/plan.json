@@ -1,0 +1,16 @@
+{
+  "approach": "Create a simple rectangular box using the cube primitive",
+  "steps": [
+    {
+      "description": "Create a cube primitive with specified dimensions",
+      "operations": [
+        "cube"
+      ]
+    }
+  ],
+  "selectedMethods": [
+    "cube"
+  ],
+  "complexity": "simple",
+  "notes": "A basic box requires only the cube primitive. Optional parameters include size (can be a single number for a cube or [x,y,z] vector for a rectangular box) and center (boolean to center at origin)."
+}

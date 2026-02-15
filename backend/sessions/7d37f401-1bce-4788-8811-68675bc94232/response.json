@@ -1,0 +1,9 @@
+{
+  "sceneGraph": {
+    "type": "cube",
+    "size": [20, 10, 15],
+    "center": true,
+    "color": "#4A90E2"
+  },
+  "markdown": "# Simple Box\n\nA basic rectangular box with customizable dimensions.\n\n## Parameters\n\n- **width**: Controls the width (X-axis) of the box\n- **depth**: Controls the depth (Y-axis) of the box  \n- **height**: Controls the height (Z-axis) of the box\n\n## Customization\n\nAdjust any of the three dimensions to create boxes of different proportions:\n- Make it a **cube** by setting all three parameters equal\n- Create a **flat platform** by reducing the height\n- Make a **tall tower** by increasing the height\n\n## 3D Printing Notes\n\nThis simple box is ideal for 3D printing:\n- No overhangs or support needed\n- Can be printed in any orientation\n- Solid and structurally sound\n- Consider adding wall thickness if you need a hollow box"
+}

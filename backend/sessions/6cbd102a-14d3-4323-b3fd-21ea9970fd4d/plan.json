@@ -1,0 +1,23 @@
+{
+  "approach": "Create a single sphere primitive with small radius and high resolution for smoothness",
+  "steps": [
+    {
+      "description": "Create a sphere with a small radius (e.g., 2-5mm)",
+      "operations": [
+        "sphere"
+      ]
+    },
+    {
+      "description": "Apply high fragment resolution for smooth surface",
+      "operations": [
+        "$fn"
+      ]
+    }
+  ],
+  "selectedMethods": [
+    "sphere",
+    "$fn"
+  ],
+  "complexity": "simple",
+  "notes": "A tiny sphere is the simplest possible 3D model - just a single sphere primitive. Use $fn for smooth rendering. Typical tiny radius would be 2-5mm."
+}

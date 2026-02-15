@@ -1,0 +1,102 @@
+{
+  "seat_width": {
+    "value": 40.0,
+    "type": "number",
+    "description": "Width of the chair seat"
+  },
+  "seat_depth": {
+    "value": 40.0,
+    "type": "number",
+    "description": "Depth of the chair seat"
+  },
+  "seat_thickness": {
+    "value": 3.0,
+    "type": "number",
+    "description": "Thickness of the seat"
+  },
+  "seat_height": {
+    "value": 45.0,
+    "type": "number",
+    "description": "Height from ground to top of seat"
+  },
+  "leg_top_size": {
+    "value": 3.5,
+    "type": "number",
+    "description": "Width of leg at top (where it meets seat)"
+  },
+  "leg_bottom_size": {
+    "value": 2.5,
+    "type": "number",
+    "description": "Width of leg at bottom (floor)"
+  },
+  "leg_height": {
+    "value": 45.0,
+    "type": "number",
+    "description": "Height of legs"
+  },
+  "back_post_top_size": {
+    "value": 3.0,
+    "type": "number",
+    "description": "Width of back post at top"
+  },
+  "back_post_bottom_size": {
+    "value": 3.5,
+    "type": "number",
+    "description": "Width of back post at bottom"
+  },
+  "back_post_height": {
+    "value": 40.0,
+    "type": "number",
+    "description": "Height of back posts above seat"
+  },
+  "back_angle": {
+    "value": 5.0,
+    "type": "number",
+    "description": "Backward angle of backrest in degrees"
+  },
+  "slat_width": {
+    "value": 35.0,
+    "type": "number",
+    "description": "Width of horizontal back slats"
+  },
+  "slat_thickness": {
+    "value": 1.5,
+    "type": "number",
+    "description": "Thickness of back slats"
+  },
+  "slat_depth": {
+    "value": 2.0,
+    "type": "number",
+    "description": "Depth (front-to-back) of back slats"
+  },
+  "num_slats": {
+    "value": 4.0,
+    "type": "number",
+    "description": "Number of horizontal back slats"
+  },
+  "slat_spacing": {
+    "value": 8.0,
+    "type": "number",
+    "description": "Vertical spacing between slats"
+  },
+  "stretcher_size": {
+    "value": 1.8,
+    "type": "number",
+    "description": "Cross-sectional size of support stretchers"
+  },
+  "stretcher_inset": {
+    "value": 4.0,
+    "type": "number",
+    "description": "Distance stretchers are inset from leg edges"
+  },
+  "stretcher_height_front": {
+    "value": 15.0,
+    "type": "number",
+    "description": "Height of front/back stretchers from ground"
+  },
+  "stretcher_height_side": {
+    "value": 15.0,
+    "type": "number",
+    "description": "Height of side stretchers from ground"
+  }
+}

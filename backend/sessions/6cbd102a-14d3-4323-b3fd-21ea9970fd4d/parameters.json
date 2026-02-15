@@ -1,0 +1,12 @@
+{
+  "radius": {
+    "value": 3,
+    "type": "number",
+    "description": "Radius of the sphere (mm)"
+  },
+  "$fn": {
+    "value": 50,
+    "type": "number",
+    "description": "Number of fragments for smooth surface"
+  }
+}

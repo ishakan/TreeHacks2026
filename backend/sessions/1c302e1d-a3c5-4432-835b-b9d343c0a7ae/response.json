@@ -1,0 +1,9 @@
+{
+  "sceneGraph": {
+    "type": "cube",
+    "size": [10, 10, 10],
+    "center": true,
+    "color": "red"
+  },
+  "markdown": "# Small Red Cube\n\nA simple 3D model consisting of a single red cube primitive.\n\n## Description\n\nThis is a basic cube with equal dimensions on all sides, colored red. The cube is centered at the origin, making it easy to position and combine with other shapes.\n\n## Parameters\n\n- **cube_size**: Controls the dimensions of the cube (width, height, and depth). Default is 10 units.\n\n## Customization\n\nYou can adjust the `cube_size` parameter to make the cube larger or smaller. For example:\n- Set to 5 for a smaller cube\n- Set to 20 for a larger cube\n\nThe model maintains equal proportions on all sides, ensuring a perfect cube shape.\n\n## 3D Printing Notes\n\nThis model is very simple and 3D-print friendly:\n- No overhangs or support requirements\n- Can be printed in any orientation\n- Solid structure with good stability"
+}

@@ -1,0 +1,72 @@
+{
+  "seat_width": {
+    "value": 30.0,
+    "type": "number",
+    "description": "Width of the chair seat (left to right)"
+  },
+  "seat_depth": {
+    "value": 16.0,
+    "type": "number",
+    "description": "Depth of the chair seat (front to back)"
+  },
+  "seat_thickness": {
+    "value": 1.2,
+    "type": "number",
+    "description": "Thickness of the seat slab"
+  },
+  "seat_height": {
+    "value": 18.0,
+    "type": "number",
+    "description": "Height from ground to top of seat"
+  },
+  "leg_top_radius": {
+    "value": 5.0,
+    "type": "number",
+    "description": "Radius of leg at the top (wider end)"
+  },
+  "leg_bottom_radius": {
+    "value": 0.6,
+    "type": "number",
+    "description": "Radius of leg at the bottom (tapered end)"
+  },
+  "back_post_height": {
+    "value": 18.0,
+    "type": "number",
+    "description": "Height of backrest above the seat"
+  },
+  "back_angle": {
+    "value": 12.0,
+    "type": "number",
+    "description": "Angle of backrest tilt in degrees (for comfort)"
+  },
+  "back_slat_count": {
+    "value": 4.0,
+    "type": "number",
+    "description": "Number of horizontal slats in the backrest"
+  },
+  "back_slat_width": {
+    "value": 14.0,
+    "type": "number",
+    "description": "Width of each horizontal back slat"
+  },
+  "back_slat_thickness": {
+    "value": 0.6,
+    "type": "number",
+    "description": "Front-to-back thickness of back slats"
+  },
+  "back_slat_height": {
+    "value": 1.2,
+    "type": "number",
+    "description": "Vertical height of each back slat"
+  },
+  "stretcher_radius": {
+    "value": 0.4,
+    "type": "number",
+    "description": "Radius of support stretchers between legs"
+  },
+  "stretcher_position": {
+    "value": 0.35,
+    "type": "number",
+    "description": "Position of stretchers as fraction of leg height (0-1)"
+  }
+}
